@@ -8,3 +8,5 @@ require 'google_data_source/invalid_data'
 require 'google_data_source/column'
 require 'google_data_source/data_date'
 require 'google_data_source/data_date_time'
+
+require 'google_data_source/template_handler'

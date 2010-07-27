@@ -114,6 +114,41 @@ module GoogleDataSource
       return self
     end
     
+    # TODO docu
+    def smart_set(items, columns = nil)
+      columns ||= guess_columns(items)
+
+      data = []
+      items.each do |item|
+        # use block for row formating
+        if block_given?
+          data << yield(item)
+        # use column ids if item is an active record
+        elsif item.is_a?(ActiveRecord::Base)
+          data << columns.map { |c| item.send(c.id) }
+        # use to_array method
+        else
+          data << item.to_array
+        end
+      end
+      set(columns, data)
+    end
+
+    # Tries to get a clever column selection from the items collection.
+    # Currently only accounts for ActiveRecord objects
+    def guess_columns(items)
+      columns = []
+      klass = items.first.class
+      klass.columns.each do |column|
+        columns << GoogleDataSource::Column.new({
+          :id => column.name,
+          :label => column.name.humanize,
+          :type => 'string' # TODO get the right type
+        })
+      end
+      columns
+    end
+
     # Validates this instance by checking that the configuration parameters
     # conform to the official specs.
     def validate
