@@ -117,6 +117,7 @@ module GoogleDataSource
     # TODO docu
     def smart_set(items, columns = nil)
       columns ||= guess_columns(items)
+      columns.map! { |c| c.is_a?(Column) ? c : Column.new(c) }
 
       data = []
       items.each do |item|

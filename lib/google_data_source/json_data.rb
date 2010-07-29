@@ -32,7 +32,14 @@ module GoogleDataSource
       data.each do |datarow|
         row = []
         datarow.each_with_index do |datacell, colnum|
-          row << { :v => convert_cell(datacell, cols[colnum][:type])  }
+          if datacell.is_a?(Hash)
+            row << {
+              :v => convert_cell(datacell[:v], cols[colnum][:type]),
+              :f => datacell[:f]
+            }
+          else
+            row << { :v => convert_cell(datacell, cols[colnum][:type])  }
+          end
         end
       
         dt[:rows] << { :c => row }
@@ -50,7 +57,7 @@ module GoogleDataSource
     def convert_cell(value, coltype)
       case coltype
       when "boolean"
-        value ? 'true' : 'false'
+        !!value
       when "number"
         value.to_i
       when "string"
