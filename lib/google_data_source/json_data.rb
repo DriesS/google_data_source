@@ -59,13 +59,13 @@ module GoogleDataSource
       when "boolean"
         !!value
       when "number"
-        value.to_i
+        value # TODO to_i ???
       when "string"
         value
       when "date"
-        DataDate.new(Date.parse(value))
+        DataDate.new(value.is_a?(String) ? Date.parse(value) : value)
       when "datetime"
-        DataDateTime.new(DateTime.parse(value))
+        DataDateTime.new(value.is_a?(String) ? DateTime.parse(value) : value)
       when "timeofday"
         [ value.hour, value.min, value.sec, value.usec / 1000 ]
       end
