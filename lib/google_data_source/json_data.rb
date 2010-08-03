@@ -21,7 +21,7 @@ module GoogleDataSource
           { :reason => "invalid_request" , :message => error }
         end
       end
-      "#{@params[:responseHandler] || @responseHandler}(#{rsp.to_json})"   
+      "#{@params[:responseHandler] || @responseHandler}(#{rsp.to_json});#{callback}"
     end
   
     # Renders the part of the JSON response that contains the dataset.

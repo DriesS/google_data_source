@@ -3,20 +3,8 @@ module GoogleDataSource
     base.extend(ClassMethods)
   end
   
-  ## 
-  # Class Methods
-  module ClassMethods
-    def google_data_source(params, options = {})
-      joins = options[:joins]
-      result = self.connection.execute(Parser.query_string_to_sql(params[:tq], self, joins))
-      cols = Column.from_result(result)
-      datasource = GoogleDataSource::Base.from_params(params)
-      datasource.set(cols, result)
-      return datasource
-    end
-  end
-  
   class Base
+    attr_accessor :callback
     attr_reader :data, :cols, :errors
     
     # Creates a new instance and validates it. 
@@ -28,7 +16,7 @@ module GoogleDataSource
       @data = []
       @version = "0.6"
       @coltypes = [ "boolean", "number", "string", "date", "datetime", "timeofday"]
-      @colkeys = [ :type, :id, :label, :pattern]
+      @colkeys = [:type, :id, :label, :pattern]
     
       validate
     end
@@ -100,7 +88,8 @@ module GoogleDataSource
     #
     # Anything that behaves like a 2-dimensional array and supports +each+ is
     # a perfectly fine alternative.
-    def set(cols, data)
+    # TODO put code in set method???
+    def set_raw(cols, data)
       cols.each do |col|
         raise ArgumentError, "Invalid column type: #{col.type}" if !@coltypes.include?(col.type)
         @cols << col.data
@@ -115,7 +104,12 @@ module GoogleDataSource
     end
     
     # TODO docu
-    def smart_set(items, columns = nil)
+    def set(items, columns = nil)
+      if items.is_a? Reporting
+        add_error(:reqId, "Form validation failed") and return unless items.valid?
+        return set(items.data, columns || items.columns)
+      end
+
       columns ||= guess_columns(items)
       columns.map! { |c| c.is_a?(Column) ? c : Column.new(c) }
 
@@ -124,6 +118,9 @@ module GoogleDataSource
         # use block for row formating
         if block_given?
           data << yield(item)
+        # use object if it is already an array
+        elsif item.is_a?(Array)
+          data << item
         # use column ids if item is an active record
         elsif item.is_a?(ActiveRecord::Base)
           data << columns.map { |c| item.send(c.id) }
@@ -132,7 +129,7 @@ module GoogleDataSource
           data << item.to_array
         end
       end
-      set(columns, data)
+      set_raw(columns, data)
     end
 
     # Tries to get a clever column selection from the items collection.
