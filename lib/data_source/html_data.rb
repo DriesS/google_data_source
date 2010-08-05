@@ -1,4 +1,6 @@
 module GoogleDataSource
-  class HtmlData < Base
+  module DataSource
+    class HtmlData < Base
+    end
   end
 end

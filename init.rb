@@ -1,16 +1,37 @@
-this_dir = File.expand_path(File.dirname(__FILE__))
-%w(base json_data csv_data html_data invalid_data column data_date data_date_time template_handler reporting reporting_renderer).each do |f|
-  require File.join(this_dir, 'lib', 'google_data_source', f)
+$:.unshift File.join(File.dirname(__FILE__), 'lib')
+ 
+require 'data_source/base'
+require 'data_source/json_data'
+require 'data_source/csv_data'
+require 'data_source/html_data'
+require 'data_source/invalid_data'
+require 'data_source/column'
+require 'data_source/data_date'
+require 'data_source/data_date_time'
+require 'data_source/template_handler'
+
+require 'data_source/sql/sql'
+require 'data_source/sql/sql_parser'
+require 'data_source/parser'
+
+require 'reporting/active_form'
+require 'reporting/reporting'
+require 'reporting/action_controller_extension'
+
+require 'data_source/helper'
+require 'reporting/helper'
+
+# register helper
+ActionView::Base.class_eval { include GoogleDataSource::DataSource::Helper }
+ActionView::Base.class_eval { include GoogleDataSource::Reporting::Helper }
+
+# register controller exentsion
+ActionController::Base.class_eval do
+  include GoogleDataSource::Reporting::ActionControllerExtension
+  alias_method_chain :render, :reporting
 end
-
-require File.join(this_dir, 'lib', 'helpers', 'google_data_source_helper')
-require File.join(this_dir, 'lib', 'helpers', 'reporting_helper')
-
-ActiveRecord::Base.send :include, GoogleDataSource
-ActionView::Base.class_eval { include GoogleDataSource::Helper }
-ActionView::Base.class_eval { include GoogleDataSource::ReportingHelper }
 
 # Register TemplateHandler
 # TODO set mime type to CSV / HTML according to the output format
 Mime::Type.register "application/json", :datasource
-ActionView::Template.register_template_handler(:datasource, GoogleDataSource::TemplateHandler)
+ActionView::Template.register_template_handler(:datasource, GoogleDataSource::DataSource::TemplateHandler)

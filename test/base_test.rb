@@ -10,89 +10,88 @@ class BaseTest < ActiveSupport::TestCase
   end
 
   test "from_params should parse the tqx parameter" do
-    ds = GoogleDataSource::Base.from_params({ :tqx => 'reqId:123;out:csv;version:0.5' })
+    ds = GoogleDataSource::DataSource::Base.from_params({ :tqx => 'reqId:123;out:csv;version:0.5' })
     assert_equal '123', ds[:reqId]
     assert_equal 'csv', ds[:out]
     assert_equal '0.5', ds[:version]
   end
 
   test "the tqx should be settable via []=" do
-    ds = GoogleDataSource::Base.from_params({})
+    ds = GoogleDataSource::DataSource::Base.from_params({})
     ds[:reqId] = '123'
     assert_equal '123', response_hash(ds)['reqId']
   end
 
   test "response should include the right reqId" do
-    ds = GoogleDataSource::Base.from_params({ :tqx => 'reqId:123' })
+    ds = GoogleDataSource::DataSource::Base.from_params({ :tqx => 'reqId:123' })
     response = response_hash(ds)
     assert_equal '123', response['reqId']
   end
 
   test "from_params should consider the out parameter" do
-    ds = GoogleDataSource::Base.from_gdata_params({ :out => 'csv' })
-    assert ds.is_a?(GoogleDataSource::CsvData)
-    ds = GoogleDataSource::Base.from_gdata_params({ :out => 'html' })
-    assert ds.is_a?(GoogleDataSource::HtmlData)
-    ds = GoogleDataSource::Base.from_gdata_params({ :out => 'json' })
-    assert ds.is_a?(GoogleDataSource::JsonData)
-    ds = GoogleDataSource::Base.from_gdata_params({ :out => '' })
-    assert ds.is_a?(GoogleDataSource::InvalidData)
+    ds = GoogleDataSource::DataSource::Base.from_gdata_params({ :out => 'csv' })
+    assert ds.is_a?(GoogleDataSource::DataSource::CsvData)
+    ds = GoogleDataSource::DataSource::Base.from_gdata_params({ :out => 'html' })
+    assert ds.is_a?(GoogleDataSource::DataSource::HtmlData)
+    ds = GoogleDataSource::DataSource::Base.from_gdata_params({ :out => 'json' })
+    assert ds.is_a?(GoogleDataSource::DataSource::JsonData)
+    ds = GoogleDataSource::DataSource::Base.from_gdata_params({ :out => '' })
+    assert ds.is_a?(GoogleDataSource::DataSource::InvalidData)
   end
 
   test "should be invalid if an error is added" do
-    ds = GoogleDataSource::Base.from_params({})
+    ds = GoogleDataSource::DataSource::Base.from_params({})
     assert ds.valid?
     ds.add_error(:foo, 'bar')
     assert !ds.valid?
   end
 
   test "should be invalid if no reqId is given" do
-    ds = GoogleDataSource::Base.from_params({:tqx => "out:csv"})
+    ds = GoogleDataSource::DataSource::Base.from_params({:tqx => "out:csv"})
     ds.validate
     assert !ds.valid?
   end
 
   test "invalidity if version is not supported" do
-    ds = GoogleDataSource::Base.from_params({:tqx => "reqId:0;version:0.5"})
+    ds = GoogleDataSource::DataSource::Base.from_params({:tqx => "reqId:0;version:0.5"})
     ds.validate
     assert !ds.valid?
   end
 
   test "invalidity if output format is not supported" do
-    ds = GoogleDataSource::Base.from_params({:tqx => "reqId:0;out:pdf"})
+    ds = GoogleDataSource::DataSource::Base.from_params({:tqx => "reqId:0;out:pdf"})
     ds.validate
     assert !ds.valid?
   end
 
-  test "set should set columns and data correctly" do
-    ds = GoogleDataSource::Base.from_params({})
+  test "set_raw should set columns and data correctly" do
+    ds = GoogleDataSource::DataSource::Base.from_params({})
     columns = [
-      GoogleDataSource::Column.new(:id => 'A', :label => 'One', :type => 'string'),
-      GoogleDataSource::Column.new(:id => 'B', :label => 'Two', :type => 'string')
+      GoogleDataSource::DataSource::Column.new(:id => 'A', :label => 'One', :type => 'string'),
+      GoogleDataSource::DataSource::Column.new(:id => 'B', :label => 'Two', :type => 'string')
     ]
     columns_hash = [
       { :type => "string", :id => "A", :label => 'One', :pattern => nil },
       { :type => "string", :id => "B", :label => 'Two', :pattern => nil }
     ]
       
-    ds.set(columns, test_data)
+    ds.set_raw(columns, test_data)
     assert_equal columns_hash, ds.cols
     assert_equal test_data, ds.data
   end
 
-  test "set should throw an exception for unknown columns types" do
-    ds = GoogleDataSource::Base.from_params({})
-    columns = [GoogleDataSource::Column.new(:id => 'A', :label => 'One', :type => 'currency')]
+  test "set_raw should throw an exception for unknown columns types" do
+    ds = GoogleDataSource::DataSource::Base.from_params({})
+    columns = [GoogleDataSource::DataSource::Column.new(:id => 'A', :label => 'One', :type => 'currency')]
     assert_raise ArgumentError do
-      ds.set(columns, test_data)
+      ds.set_raw(columns, test_data)
     end
   end
 
   test "guess_columns" do
     items = [Item.create(:name => "name", :description => "description", :number => 0)]
-    ds = GoogleDataSource::Base.from_params({})
+    ds = GoogleDataSource::DataSource::Base.from_params({})
     columns = ds.guess_columns(items)
-    puts columns.inspect
 
     col_name        = columns.select{|c| c.id == 'name'}.first
     col_description = columns.select{|c| c.id == 'description'}.first
@@ -105,12 +104,12 @@ class BaseTest < ActiveSupport::TestCase
     # TODO check types
   end
 
-  test "smart_set" do
+  test "set" do
     items = [Item.create(:name => "Item Name", :description => "description", :number => 0)]
-    ds = GoogleDataSource::Base.from_params({})
+    ds = GoogleDataSource::DataSource::Base.from_params({})
 
-    columns = [GoogleDataSource::Column.new(:id => 'name', :label => 'Name', :type => 'string')]
-    ds.smart_set(items, columns) do |item|
+    columns = [GoogleDataSource::DataSource::Column.new(:id => 'name', :label => 'Name', :type => 'string')]
+    ds.set(items, columns) do |item|
       [item.name]
     end
 

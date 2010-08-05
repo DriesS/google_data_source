@@ -5,6 +5,7 @@ require 'active_support/test_case'
 require 'action_controller'
 require 'active_record'
 require "#{File.expand_path(File.dirname(__FILE__))}/../init"
+require 'mocha'
 
 # Setup Database and Models
 ActiveRecord::Base.establish_connection(

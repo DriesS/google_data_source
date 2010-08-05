@@ -11,13 +11,13 @@ class CvsDataTest < ActiveSupport::TestCase
 
   test "csv rendering" do
     items = [Item.create(:name => "Item Name", :description => "description", :number => 0)]
-    ds = GoogleDataSource::Base.from_params({:tqx => "reqId:0;out:csv"})
+    ds = GoogleDataSource::DataSource::Base.from_params({:tqx => "reqId:0;out:csv"})
 
     columns = [
       {:id => 'name', :label => 'Name', :type => 'string'},
       {:id => 'number', :label => 'Number', :type => 'number'},
     ]
-    ds.smart_set(items, columns)
+    ds.set(items, columns)
 
     result = CSV.parse(ds.response)
     assert_equal [["Name", "Number"], ["Item Name", "0"]], result
