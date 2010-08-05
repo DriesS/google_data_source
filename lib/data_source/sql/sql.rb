@@ -212,7 +212,6 @@ module GoogleDataSource
       #############Relations######################
 
       class OrderElement < WithHelpers
-        include RParsec::DefHelper
         def_readable :expr, :asc
         def to_s
           result = "#{expr}"
@@ -224,7 +223,6 @@ module GoogleDataSource
       end
 
       class GroupByClause < WithHelpers
-        include RParsec::DefHelper
         def_readable :exprs, :having
         def to_s
           result = exprs.join(', ')
@@ -236,20 +234,16 @@ module GoogleDataSource
       end
 
       class Relation < WithHelpers
-        include RParsec::DefHelper
         def as_inner
           to_s
         end
       end
 
       class SelectRelation < Relation
-        def_readable :select, :distinct, :where, :groupby, :orderby, :limit, :offset
+        def_readable :select, :where, :groupby, :orderby, :limit, :offset
 
         def to_s
           result = "select"
-          if distinct
-            result << " distinct"
-          end
           result << " #{select.join(', ')}"
           unless where.nil?
             result << " where #{where}"
@@ -268,10 +262,6 @@ module GoogleDataSource
           end
           result
         end
-
-        #def as_inner
-        #  "(#{self})"
-        #end
       end
     end
   end

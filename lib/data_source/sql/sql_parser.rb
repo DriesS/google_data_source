@@ -204,17 +204,22 @@ module GoogleDataSource
             &ctor(OrderElement))
           order_elements = order_element.separated1(comma)
           exprs = expr.separated1(comma)
+
+          # setup clauses
+          select_clause = keyword[:select] >> exprs
           order_by_clause = keyword[:order] >> keyword[:by] >> order_elements
           group_by = keyword[:group] >> keyword[:by] >> exprs
           group_by_clause = sequence(group_by, (keyword[:having] >> pred).optional, &ctor(GroupByClause))
           limit_clause = keyword[:limit] >> token(:number, &To_i)
           offset_clause = keyword[:offset] >> token(:number, &To_i)
-          relation = sequence(keyword[:select], 
-            keyword[:distinct].optional(false), exprs, 
+
+          # build relation
+          relation = sequence(
+            select_clause.optional([WildcardExpr.new]),
             where_clause.optional, group_by_clause.optional, order_by_clause.optional,
             limit_clause.optional, offset_clause.optional
-          ) do |_, distinct, projected, where, groupby, orderby, limit, offset|
-            SelectRelation.new(projected, distinct, where, groupby, orderby, limit, offset)
+          ) do |select, where, groupby, orderby, limit, offset|
+            SelectRelation.new(select, where, groupby, orderby, limit, offset)
           end
         end
         
