@@ -1,5 +1,7 @@
 $:.unshift File.join(File.dirname(__FILE__), 'lib')
  
+require 'ostruct'
+
 require 'data_source/base'
 require 'data_source/json_data'
 require 'data_source/csv_data'
@@ -10,9 +12,9 @@ require 'data_source/data_date'
 require 'data_source/data_date_time'
 require 'data_source/template_handler'
 
-require 'data_source/sql/sql'
-require 'data_source/sql/sql_parser'
-require 'data_source/parser'
+require 'data_source/sql/models'
+require 'data_source/sql/parser'
+require 'data_source/sql_parser'
 
 require 'reporting/active_form'
 require 'reporting/reporting'

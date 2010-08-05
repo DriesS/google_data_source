@@ -29,11 +29,13 @@ module GoogleDataSource
           sum(*result)
         end
         Comparators = operators(*%w{= > < >= <= <> !=})
+        # TODO literals are whatfor???
         StringLiteral = (char(?') >> (not_char(?')|str("''")).many_.fragment << char(?')).
           map do |raw|
             raw.gsub!(/''/,"'")
           end
-        QuotedName = char(?[) >> not_char(?]).many_.fragment << char(?])
+        # TODO Allow excaping of backticks
+        QuotedName = char(?`) >> not_char(?`).many_.fragment << char(?`)
         Variable = char(?$) >> word
         MyLexer = number.token(:number) | StringLiteral.token(:string) | Variable.token(:var) | QuotedName.token(:word) |
           MyKeywords.lexer | MyOperators.lexer
