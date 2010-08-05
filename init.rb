@@ -16,7 +16,6 @@ require 'data_source/sql/models'
 require 'data_source/sql/parser'
 require 'data_source/sql_parser'
 
-require 'reporting/active_form'
 require 'reporting/reporting'
 require 'reporting/action_controller_extension'
 
