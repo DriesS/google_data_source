@@ -3,6 +3,34 @@ require "#{File.expand_path(File.dirname(__FILE__))}/test_helper"
 class SqlParserTest < ActiveSupport::TestCase
   include GoogleDataSource::DataSource
 
+  test "quoting with ticks" do
+    result = SqlParser.parse("where `foo bar`=3")
+    assert_equal 'foo bar', result.where.left.to_s
+  end
+
+  test "quoting with single quotes" do
+    result = SqlParser.parse("where bar='foo bar'")
+    assert_equal 'foo bar', result.where.right.to_s
+  end
+
+  test "allow escaped quotes in qutoed strings" do
+    result = SqlParser.parse("where bar='test\\''")
+    assert_equal "test'", result.where.right.to_s
+  end
+
+  test "allow escaped backslash" do
+    result = SqlParser.parse("where bar='te\\\\st'")
+    assert_equal "te\\st", result.where.right.to_s
+  end
+
+  test "allow escaped backslash as last character" do
+    result = SqlParser.parse("where bar='test\\\\'")
+    assert_equal "test\\", result.where.right.to_s
+  end
+
+  ###############################
+  # Test the simple parser
+  ###############################
   test "simple parser" do
     result = SqlParser.simple_parse("select id,name where age = 18 group by attr1, attr2 order by age asc limit 10 offset 5")
     assert_equal ['id', 'name'], result.select

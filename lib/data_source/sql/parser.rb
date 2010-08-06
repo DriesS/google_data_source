@@ -14,6 +14,7 @@ module GoogleDataSource
         include Parsers
 
         extend Parsers
+        # TODO drop keywords
         MyKeywords = Keywords.case_insensitive(%w{
           select from where group by having order desc asc
           inner left right full outer inner join on cross
@@ -29,16 +30,16 @@ module GoogleDataSource
           sum(*result)
         end
         Comparators = operators(*%w{= > < >= <= <> !=})
-        # TODO literals are whatfor???
-        StringLiteral = (char(?') >> (not_char(?')|str("''")).many_.fragment << char(?')).
-          map do |raw|
-            raw.gsub!(/''/,"'")
-          end
-        # TODO Allow excaping of backticks
-        QuotedName = char(?`) >> not_char(?`).many_.fragment << char(?`)
+        quote_mapper = Proc.new do |raw|
+          # is this really different to raw.gsub! ???
+          raw.replace(raw.gsub(/\\'/, "'").gsub(/\\\\/, "\\"))
+        end
+
+        StringLiteral = char(?') >> ((str("\\\\")|str("\\'")|not_char(?')).many_.fragment).map(&quote_mapper) << char(?')
+        QuotedName    = char(?`) >> not_char(?`).many_.fragment << char(?`)
         Variable = char(?$) >> word
-        MyLexer = number.token(:number) | StringLiteral.token(:string) | Variable.token(:var) | QuotedName.token(:word) |
-          MyKeywords.lexer | MyOperators.lexer
+        MyLexer = number.token(:number) | StringLiteral.token(:string) | Variable.token(:var) |
+          QuotedName.token(:word) | MyKeywords.lexer | MyOperators.lexer
         MyLexeme = MyLexer.lexeme(whitespaces | comment_line('#')) << eof
         
         
@@ -168,27 +169,12 @@ module GoogleDataSource
         def make_expression predicate, rel
           expr = nil
           lazy_expr = lazy{expr}
-          simple_case = sequence(keyword[:when], lazy_expr, operator[':'], lazy_expr) do |_,cond,_,val|
-            [cond, val]
-          end
-          full_case = sequence(keyword[:when], predicate, operator[':'], lazy_expr) do |_,cond,_,val|
-            [cond, val]
-          end
-          default_case = (keyword[:else] >> lazy_expr).optional
-          simple_when_then = sequence(lazy_expr, simple_case.many, default_case, 
-            keyword[:end]) do |val, cases, default, _|
-            calculate_simple_cases(val, cases, default)
-          end
-          full_when_then = sequence(full_case.many, default_case, keyword[:end]) do |cases, default, _|
-            calculate_full_cases(cases, default)
-          end
-          case_expr = keyword[:case] >> (simple_when_then | full_when_then)
+
           wildcard = operator[:*] >> WildcardExpr::Instance
           lit = token(:number, :string, &ctor(LiteralExpr)) | token(:var, &ctor(VarExpr))
-          atom = lit | wildcard |
-            sequence(word, operator['.'], word|wildcard) {|owner, _, col| QualifiedColumnExpr.new owner, col} |
-            word(&ctor(WordExpr))
-          term = atom | (operator['('] >> lazy_expr << operator[')']) | case_expr
+          atom = lit | wildcard | word(&ctor(WordExpr))
+          term = atom | (operator['('] >> lazy_expr << operator[')'])
+
           table = OperatorTable.new.
             infixl(operator['+'] >> Plus, 20).
             infixl(operator['-'] >> Minus, 20).

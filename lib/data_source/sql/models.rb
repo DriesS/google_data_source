@@ -34,7 +34,7 @@ module GoogleDataSource
       class LiteralExpr < Expr
         def_readable :lit
         def to_s
-          @lit.to_s
+          lit
         end
       end
 
