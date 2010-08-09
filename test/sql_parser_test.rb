@@ -66,4 +66,12 @@ class SqlParserTest < ActiveSupport::TestCase
       SqlParser.simple_parse("where id < 1 and name = `foo bar`")
     end
   end
+
+  test "where parser should convert < and > statements to range, if both exist" do
+    conditions = SqlParser.simple_parse("where date > '2010-01-01' and date < '2010-02-01'").conditions
+    assert_kind_of Range, conditions['date']
+    assert_equal '2010-01-01', conditions['date'].min
+    assert_equal '2010-02-01', conditions['date'].max
+  end
+
 end

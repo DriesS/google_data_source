@@ -12,9 +12,21 @@ module GoogleDataSource
         # Throws a +SimpleSqlException+ if these conditions are not satisfied
         def simple_parse(query)
           result = parse(query)
+
+          # post process where conditions (this could be moved in a dedicated method)
+          where = {}
+          simple_where_parser(result.where).each do |k, v|
+            if v.is_a?(Hash)
+              raise SimpleSqlException.new "Operators < and > may only be used in combination" if v.size < 2
+              where[k] = (v[:">"]..v[:"<"])
+            else
+              where[k] = v
+            end
+          end
+
           OpenStruct.new({
             :select => result.select.collect(&:to_s),
-            :conditions => simple_where_parser(result.where),
+            :conditions => where,
             :orderby => simple_orderby_parser(result.orderby),
             :groupby => simple_groupby_parser(result.groupby),
             :limit => result.limit,
@@ -36,8 +48,15 @@ module GoogleDataSource
               simple_where_parser(predicate.left,  result)
               simple_where_parser(predicate.right, result)
             when 'ComparePredicate'
-              raise SimpleSqlException.new("Comparator forbidden (use only '=')") unless predicate.op == :"="
-              result[predicate.left.to_s] = predicate.right.to_s
+              case predicate.op
+              when :"="
+                result[predicate.left.to_s] = predicate.right.to_s
+              when :"<", :">"
+                result[predicate.left.to_s] ||= Hash.new
+                result[predicate.left.to_s][predicate.op] = predicate.right.to_s
+              else
+                raise SimpleSqlException.new("Comparator forbidden (use only '=,<,>')") unless predicate.op == :"="
+              end
             when 'NilClass'
               # do nothing
             else
