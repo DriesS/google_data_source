@@ -28,6 +28,11 @@ class SqlParserTest < ActiveSupport::TestCase
     assert_equal "test\\", result.where.right.to_s
   end
 
+  test "parsing of empty single quoted string ('')" do
+    result = SqlParser.parse("where foo=''")
+    assert_equal "", result.where.right.to_s
+  end
+
   ###############################
   # Test the simple parser
   ###############################

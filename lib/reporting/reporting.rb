@@ -52,7 +52,16 @@ class Reporting < ActiveRecord::Base
       return self.new unless params.has_key?(:tq)
 
       query = GoogleDataSource::DataSource::SqlParser.simple_parse(params[:tq])
-      reporting = self.new(query.conditions)
+      attributes = Hash.new
+      query.conditions.each do |k, v|
+        if v.is_a?(Range)
+          attributes["from_#{k}"] = v.first unless v.first.blank?
+          attributes["to_#{k}"] = v.last   unless v.last.blank?
+        else
+          attributes[k] = v
+        end
+      end
+      reporting = self.new(attributes.symbolize_keys)
       reporting.query = params[:tq]
       reporting
     end

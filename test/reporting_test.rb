@@ -3,9 +3,13 @@ require "#{File.expand_path(File.dirname(__FILE__))}/test_helper"
 class ReportingTest < ActiveSupport::TestCase
   class TestReporting < Reporting
     attr_reader :aggregate_calls
+    column :name
+    column :from_date, :type => :date
+    column :to_date, :type => :date
 
-    def initialize
+    def initialize(*args)
       @aggregate_calls = 0
+      super(*args)
     end
 
     def aggregate
@@ -31,6 +35,20 @@ class ReportingTest < ActiveSupport::TestCase
   test "form_id" do
     r = TestReporting.new
     assert_equal "test_reporting_form", r.form_id
+  end
+
+  test "from_params" do
+    query = "where name = 'test name' and from_date = '2010-01-01'"
+    r = TestReporting.from_params({:tq => query})
+    assert_equal "test name", r.name
+    assert_equal "2010-01-01".to_date, r.from_date
+  end
+
+  test "from_params_with_date_range" do
+    query = "where `date` > '2010-01-01' and `date`<'2010-02-01'"
+    r = TestReporting.from_params({:tq => query})
+    assert_equal "2010-01-01".to_date, r.from_date
+    assert_equal "2010-02-01".to_date, r.to_date
   end
 
   ################################
