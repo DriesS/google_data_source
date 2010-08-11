@@ -12,7 +12,13 @@ module GoogleDataSource
         return google_visualization(type, url, options) unless reporting.has_form?
 
         # form
-        html  = google_visualization(type, url, options.merge(:form => reporting.form_id))
+        # default options
+        default_options = {
+          :form       => reporting.form_id,
+          :autosubmit => true
+        }
+        
+        html  = google_visualization(type, url, default_options.update(options))
         html << content_tag("form", :id => reporting.form_id, :class => 'formtastic') do
           render :partial => reporting.partial
         end

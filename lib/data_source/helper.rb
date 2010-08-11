@@ -22,8 +22,8 @@ module GoogleDataSource
         container_id = options.delete(:container_id) || "google_#{type.underscore}"
 
         # camelize option keys
-        js_options = options.to_a.inject({}) {|memo, opt| memo[opt.first.to_s.camelize(:lower)] = opt.last; memo}
-
+        js_options = options.to_a.inject({}) { |memo, opt| memo[opt.first.to_s.camelize(:lower)] = opt.last; memo }
+        
         url ||= url_for(:format => 'datasource')
         html = javascript_tag("DataSource.Visualization.create('#{type.camelize}', '#{url}', '#{container_id}', #{js_options.to_json});")
         html << content_tag(:div, :id => container_id) { }
