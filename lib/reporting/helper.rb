@@ -13,16 +13,18 @@ module GoogleDataSource
 
         # form
         # default options
-        default_options = {
-          :form       => reporting.form_id,
-          :autosubmit => true
-        }
+        options = {
+          :form          => reporting.form_id,
+          :autosubmit    => true,
+          :form_position => :bottom
+        }.update(options)
         
-        html  = google_visualization(type, url, default_options.update(options))
-        html << content_tag("form", :id => reporting.form_id, :class => 'formtastic') do
+        visualization_html = google_visualization(type, url, options)
+        form_html = content_tag("form", :id => reporting.form_id, :class => 'formtastic') do
           render :partial => reporting.partial
         end
-        html
+        
+        options[:form_position] == :bottom ? visualization_html << form_html : form_html << visualization_html
       end
 
       # Shows a timeline reporting
