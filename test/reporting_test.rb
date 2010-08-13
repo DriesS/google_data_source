@@ -45,7 +45,7 @@ class ReportingTest < ActiveSupport::TestCase
   end
 
   test "from_params_with_date_range" do
-    query = "where `date` > '2010-01-01' and `date`<'2010-02-01'"
+    query = "where `date` >= '2010-01-01' and `date`<='2010-02-01'"
     r = TestReporting.from_params({:tq => query})
     assert_equal "2010-01-01".to_date, r.from_date
     assert_equal "2010-02-01".to_date, r.to_date

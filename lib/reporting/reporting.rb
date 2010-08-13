@@ -7,7 +7,7 @@
 #
 # The ActiveRecord extension is copied from the ActiveForm plugin (http://github.com/remvee/active_form)
 class Reporting < ActiveRecord::Base
-  attr_accessor :query
+  attr_accessor :query, :group_by
 
   # 'Abstract' method that has to be overridden by subclasses
   # Sets the @data and @columns instance variables depending on the configuration
@@ -45,6 +45,11 @@ class Reporting < ActiveRecord::Base
     false
   end
 
+  # Returns the grouping columns as array
+  def group_by
+    @group_by ||= []
+  end
+
   class << self
     # Uses the +simple_parse+ method of the SqlParser to setup a reporting
     # from a query. The where clause is intepreted as reporting configuration (activerecord attributes)
@@ -54,13 +59,22 @@ class Reporting < ActiveRecord::Base
       query = GoogleDataSource::DataSource::SqlParser.simple_parse(params[:tq])
       attributes = Hash.new
       query.conditions.each do |k, v|
-        if v.is_a?(Range)
-          attributes["from_#{k}"] = v.first unless v.first.blank?
-          attributes["to_#{k}"] = v.last   unless v.last.blank?
+        if v.is_a?(Array)
+          v.each do |condition|
+            case condition.op
+            when '<='
+              attributes["to_#{k}"] = condition.value
+            when '>='
+              attributes["from_#{k}"] = condition.value
+            else
+              # raise exception for unsupported operator?
+            end
+          end
         else
           attributes[k] = v
         end
       end
+      attributes[:group_by] = query.groupby
       reporting = self.new(attributes.symbolize_keys)
       reporting.query = params[:tq]
       reporting

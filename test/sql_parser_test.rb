@@ -66,17 +66,13 @@ class SqlParserTest < ActiveSupport::TestCase
     end
   end
 
-  test "simple where parser should only accept = comperators" do
-    assert_raises GoogleDataSource::DataSource::SimpleSqlException do
-      SqlParser.simple_parse("where id < 1 and name = `foo bar`")
-    end
-  end
-
-  test "where parser should convert < and > statements to range, if both exist" do
+  test "where parser should convert other operators than = to array" do
     conditions = SqlParser.simple_parse("where date > '2010-01-01' and date < '2010-02-01'").conditions
-    assert_kind_of Range, conditions['date']
-    assert_equal '2010-01-01', conditions['date'].min
-    assert_equal '2010-02-01', conditions['date'].max
+    assert_kind_of Array, conditions['date']
+    assert_equal '>', conditions['date'].first.op
+    assert_equal '2010-01-01', conditions['date'].first.value
+    assert_equal '<', conditions['date'].last.op
+    assert_equal '2010-02-01', conditions['date'].last.value
   end
 
 end
