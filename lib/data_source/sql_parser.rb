@@ -12,18 +12,6 @@ module GoogleDataSource
         # Throws a +SimpleSqlException+ if these conditions are not satisfied
         def simple_parse(query)
           result = parse(query)
-
-          # post process where conditions (this could be moved in a dedicated method)
-          #where = {}
-          #simple_where_parser(result.where).each do |k, v|
-          #  if v.is_a?(Hash)
-          #    raise SimpleSqlException.new "Operators < and > may only be used in combination" if v.size < 2
-          #    where[k] = (v[:">"]..v[:"<"])
-          #  else
-          #    where[k] = v
-          #  end
-          #end
-
           OpenStruct.new({
             :select => result.select.collect(&:to_s),
             :conditions => simple_where_parser(result.where),

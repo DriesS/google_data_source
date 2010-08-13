@@ -7,7 +7,7 @@ module GoogleDataSource
       # Callback defines a JavaScript snippet that is appended to the regular
       # data-source reponse. This is currently used to refresh the form in
       # reportings (validation)
-      attr_accessor :callback
+      attr_accessor :callback, :reporting
 
       # Define accessors for the data source data, columns and errors
       attr_reader :data, :cols, :errors
@@ -129,7 +129,8 @@ module GoogleDataSource
       def set(items, columns = nil)
         if items.is_a?(::Reporting)
           add_error(:reqId, "Form validation failed") and return unless items.valid?
-          return set(items.data, columns || items.columns)
+          self.reporting = items
+          return set(reporting.rows, reporting.columns)
         end
 
         columns ||= guess_columns(items)

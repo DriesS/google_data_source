@@ -7,26 +7,65 @@
 #
 # The ActiveRecord extension is copied from the ActiveForm plugin (http://github.com/remvee/active_form)
 class Reporting < ActiveRecord::Base
-  attr_accessor :query, :group_by
+  attr_accessor :query, :group_by, :select, :column_labels, :formatters
+  cattr_reader :datasource_columns
 
   # 'Abstract' method that has to be overridden by subclasses
   # Sets the @data and @columns instance variables depending on the configuration
   # @data and @columns must be compatible with the +set+ method of +GoogleDataSource::Base+
   def aggregate
-    @columns = []
-    @data    = []
+    @rows = []
+  end
+
+  # Returns the data rows
+  # Calls the aggregate method first if rows do not exist
+  def rows
+    aggregate if @rows.nil?
+    @rows
+  end
+
+  # Add a row to the rows set returned by rows
+  # Takes a hash and stores only selected columns applying the formatters if existent.
+  #
+  # This method should be called from the aggregate method of subclasses
+  def add_row(row)
+    row = HashWithIndifferentAccess.new(row)
+    @rows ||= []
+    @rows << select.inject([]) do |columns, column|
+      if formatters[column.to_sym].is_a?(Proc)
+        columns << {
+          :f => formatters[column.to_sym].call(row[column]),
+          :v => row[column]
+        }
+      else
+        columns << row[column]
+      end
+    end
   end
 
   # Lazy getter for the columns object
   def columns
-    aggregate if @columns.nil?
-    @columns
+    select.inject([]) do |columns, column|
+      columns << datasource_columns[column].merge({
+        :id    => column.to_s,
+        :label => column_labels[column.to_sym] ? column_labels[column.to_sym] : column.humanize
+      })
+    end
   end
 
-  # Lazy getter for the data object
-  def data
-    aggregate if @data.nil?
-    @data
+  # Accessor for column labels
+  def column_labels
+    @column_labels ||= {}
+  end
+
+  # Accessor for columns formatters
+  def formatters
+    @formatters ||= {}
+  end
+
+  # Convenience method for formatter definition
+  def formatter(column, &block)
+    formatters[column] = block
   end
 
   # Returns the path the form partial. May be overriden by subclass
@@ -45,12 +84,24 @@ class Reporting < ActiveRecord::Base
     false
   end
 
+  # Returns the select columns as array
+  def select
+    @select ||= []
+  end
+
   # Returns the grouping columns as array
   def group_by
     @group_by ||= []
   end
 
   class << self
+    # TODO docu
+    def column(name, options = {})
+      @@datasource_columns ||= HashWithIndifferentAccess.new
+      default_options = { :type  => :string }
+      datasource_columns[name] = default_options.merge(options)
+    end
+
     # Uses the +simple_parse+ method of the SqlParser to setup a reporting
     # from a query. The where clause is intepreted as reporting configuration (activerecord attributes)
     def from_params(params)
@@ -92,7 +143,7 @@ class Reporting < ActiveRecord::Base
     # [+:default+] default value
     # [+:null+] whether it is nullable
     # [+:human_name+] human readable name
-    def column(name, options = {})
+    def filter(name, options = {})
       name = name.to_s
       options.each { |k,v| options[k] = v.to_s if Symbol === v }
       

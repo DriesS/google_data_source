@@ -3,9 +3,17 @@ require "#{File.expand_path(File.dirname(__FILE__))}/test_helper"
 class ReportingTest < ActiveSupport::TestCase
   class TestReporting < Reporting
     attr_reader :aggregate_calls
-    column :name
-    column :from_date, :type => :date
-    column :to_date, :type => :date
+    filter :name
+    filter :from_date, :type => :date
+    filter :to_date, :type => :date
+
+    column :name,    :type => :string
+    column :age,     :type => :number
+    column :address, :type => :string
+
+    def select
+      %w(name age)
+    end
 
     def initialize(*args)
       @aggregate_calls = 0
@@ -14,27 +22,26 @@ class ReportingTest < ActiveSupport::TestCase
 
     def aggregate
       @aggregate_calls += 1
-      # set data and columns so aggregate is only called once
-      @data = []
-      @columns = []
+      @rows = []
     end
   end
 
-  test "columns" do
-    r = TestReporting.new
-    r.columns
-    r.data
-    assert_equal 1, r.aggregate_calls
+  def setup
+    @reporting = TestReporting.new
+  end
+
+  test "rows should call aggregate once and only once" do
+    @reporting.rows
+    @reporting.rows
+    assert_equal 1, @reporting.aggregate_calls
   end
 
   test "partial" do
-    r = TestReporting.new
-    assert_equal "test_reporting_form.html", r.partial
+    assert_equal "test_reporting_form.html", @reporting.partial
   end
 
   test "form_id" do
-    r = TestReporting.new
-    assert_equal "test_reporting_form", r.form_id
+    assert_equal "test_reporting_form", @reporting.form_id
   end
 
   test "from_params" do
@@ -51,6 +58,50 @@ class ReportingTest < ActiveSupport::TestCase
     assert_equal "2010-02-01".to_date, r.to_date
   end
 
+  test "setting datasource columns" do
+    assert_equal :string, @reporting.datasource_columns[:name][:type]
+    assert_equal :string, TestReporting.datasource_columns[:name][:type]
+  end
+
+  test "get column definitions with respect to custom column labels and select" do
+    @reporting.column_labels = {
+      :name => "Nom"
+    }
+    columns = @reporting.columns
+    assert_equal 2,       columns.size
+    assert_equal 'name',  columns[0][:id]
+    assert_equal :string, columns[0][:type]
+    assert_equal 'Nom',   columns[0][:label]
+    assert_equal 'Age',   columns[1][:label]
+  end
+
+  test "add data" do
+    assert_equal [], @reporting.rows
+    @reporting.add_row({ :name => 'John', :age => 30, :address => 'Samplestreet 11'})
+    assert_equal      1, @reporting.rows.size
+    assert_equal      2, @reporting.rows.first.size
+    assert_equal 'John', @reporting.rows.first[0]
+    assert_equal     30, @reporting.rows.first[1]
+  end
+
+  test "use formatter when adding data" do
+    @reporting.formatters[:name] = Proc.new do |name|
+      "<strong>#{name}</strong>"
+    end
+    @reporting.add_row({ :name => 'John', :age => 30, :address => 'Samplestreet 11'})
+    assert @reporting.rows.first[0].has_key?(:f)
+    assert @reporting.rows.first[0].has_key?(:v)
+    assert_equal "<strong>John</strong>", @reporting.rows.first[0][:f]
+  end
+
+  test "setting formatter with formatter convenience method" do
+    @reporting.formatter(:name) do |name|
+      "<strong>#{name}</strong>"
+    end
+    @reporting.add_row({ :name => 'John', :age => 30, :address => 'Samplestreet 11'})
+    assert_equal "<strong>John</strong>", @reporting.rows.first[0][:f]
+  end
+
   ################################
   # Test ActiveRecord extension
   ################################
@@ -59,10 +110,10 @@ class ReportingTest < ActiveSupport::TestCase
     assert_nothing_raised { Reporting }
   end
   
-  test "can add columns" do
+  test "can add filters" do
     self.class.class_eval %q{
       class CanAddColumns < Reporting
-        %w(foo bar test).each { |c| column c }
+        %w(foo bar test).each { |c| filter c }
       end
     }
     assert_equal 3, CanAddColumns.columns.size
@@ -72,12 +123,12 @@ class ReportingTest < ActiveSupport::TestCase
     self.class.class_eval %q{
       class TypeProperlySet < Reporting
         %w(string text date datetime boolean).each do |type|
-          column "a_#{type}".to_sym, :type => type.to_sym
+          filter "a_#{type}".to_sym, :type => type.to_sym
         end
       end
     }
     
-    assert TypeProperlySet.columns.size > 0, 'no columns added'
+    assert TypeProperlySet.columns.size > 0, 'no filters added'
     
     %w(string text date datetime boolean).each do |type|
       assert_equal type, TypeProperlySet.columns_hash["a_#{type}"].sql_type
@@ -87,7 +138,7 @@ class ReportingTest < ActiveSupport::TestCase
   test "default properly set" do
     self.class.class_eval %q{
       class DefaultPropertlySet < Reporting
-        column :bicycle, :default => 'batavus'
+        filter :bicycle, :default => 'batavus'
       end
     }
     assert_equal 'batavus', DefaultPropertlySet.new.bicycle
@@ -96,7 +147,7 @@ class ReportingTest < ActiveSupport::TestCase
   test "columns are humanizable" do
     self.class.class_eval %q{
       class Humanizable < Reporting
-        column :bicycle, :human_name => 'fiets'
+        filter :bicycle, :human_name => 'fiets'
       end
     }
     
@@ -107,7 +158,7 @@ class ReportingTest < ActiveSupport::TestCase
     assert_raises ArgumentError do
       self.class.class_eval %q{
         class FailOnIllegalOption < Reporting
-          column :foo, :bar => 'yelp!'
+          filter :foo, :bar => 'yelp!'
         end
       }
     end
@@ -144,7 +195,7 @@ class ReportingTest < ActiveSupport::TestCase
   test "callbacks called on invalid" do
     self.class.class_eval %q{
       class WithCallbackFailure < Reporting
-        column :required
+        filter :required
         validates_presence_of :required
         
         CALLBACKS_FOR_INVALID.each do |callback|
@@ -177,7 +228,7 @@ class ReportingTest < ActiveSupport::TestCase
   test "create bang raises exception on invalid" do
     self.class.class_eval %q{
       class CreateBangFailure < Reporting
-        column :required_field
+        filter :required_field
         validates_presence_of :required_field
       end
     }

@@ -1,8 +1,26 @@
 require "#{File.expand_path(File.dirname(__FILE__))}/test_helper"
 
+class TestReporting < Reporting
+  column :name, :type => :string
+  column :age,  :type => :number
+
+  def aggregate
+    @rows = [
+      ["John", 20],
+      ["Jim", 30]
+    ]
+  end
+
+  def select
+    %w(name age)
+  end
+end
+
 class BaseTest < ActiveSupport::TestCase
   def setup
     setup_db
+    @reporting = TestReporting.new
+    @datasource = GoogleDataSource::DataSource::Base.from_params({})
   end
 
   def teardown
@@ -116,6 +134,18 @@ class BaseTest < ActiveSupport::TestCase
     assert_equal 1, ds.cols.size
     assert_equal 'Name', ds.cols.first[:label]
     assert_equal "Item Name", ds.data.first.first
+  end
+
+  test "set should take reporting as argument" do
+    assert @datasource.reporting.nil?
+    @datasource.set(@reporting)
+    assert_equal @datasource.reporting, @reporting
+  end
+
+  test "set should set reporting rows correctly" do
+    @datasource.set(@reporting)
+    assert_equal @datasource.data.first, ["John", 20]
+    assert_equal @datasource.data.last, ["Jim", 30]
   end
 
   def test_data

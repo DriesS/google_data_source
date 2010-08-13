@@ -12,7 +12,7 @@ module GoogleDataSource
       attr_reader :type, :id, :label, :pattern
       
       def initialize(params)
-        @type = params[:type] || 'string'
+        @type = (params[:type] || :string).to_s
         @id = params[:id]
         @label = params[:label]
         @pattern = params[:pattern]
