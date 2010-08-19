@@ -17,6 +17,7 @@ require 'data_source/sql/parser'
 require 'data_source/sql_parser'
 
 require 'reporting/reporting'
+require 'reporting/sql_reporting'
 require 'reporting/action_controller_extension'
 
 require 'data_source/helper'

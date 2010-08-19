@@ -54,9 +54,10 @@ class Reporting < ActiveRecord::Base
 
   # Lazy getter for the columns object
   def columns
-    all_columns = datasource_columns.merge(virtual_columns)
     select.inject([]) do |columns, column|
-      columns << all_columns[column].merge({
+      columns << {
+        :type => all_columns[column][:type]
+      }.merge({
         :id    => column.to_s,
         :label => column_labels[column.to_sym] ? column_labels[column.to_sym] : column.to_s.humanize
       })
@@ -91,7 +92,7 @@ class Reporting < ActiveRecord::Base
 
   # Returns the select columns as array
   def select
-    @select ||= []
+    (@select ||= []).collect { |c| c == '*' ? all_columns.keys : c }.flatten
   end
 
   # Returns the grouping columns as array
@@ -111,6 +112,11 @@ class Reporting < ActiveRecord::Base
       :type => type,
       :proc => block
     }
+  end
+
+  # Returns a list of all columns (real and virtual)
+  def all_columns
+    datasource_columns.merge(virtual_columns)
   end
 
   class << self
@@ -145,6 +151,7 @@ class Reporting < ActiveRecord::Base
         end
       end
       attributes[:group_by] = query.groupby
+      attributes[:select]   = query.select
       attributes.merge!(params[key]) if params.has_key?(key)
       reporting = self.new(attributes.symbolize_keys)
       reporting.query = params[:tq]

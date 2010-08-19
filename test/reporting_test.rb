@@ -11,11 +11,8 @@ class ReportingTest < ActiveSupport::TestCase
     column :age,       :type => :number
     column :address,   :type => :string
 
-    def select
-      @select ||= %w(name age)
-    end
-
     def initialize(*args)
+      @select = %w(name age)
       @aggregate_calls = 0
       super(*args)
     end
@@ -49,6 +46,25 @@ class ReportingTest < ActiveSupport::TestCase
     r = TestReporting.from_params({:tq => query})
     assert_equal "test name", r.name
     assert_equal "2010-01-01".to_date, r.from_date
+  end
+
+  test "from_params should set select" do
+    query = "select name"
+    r = TestReporting.from_params({:tq => query})
+    assert_equal ['name'], r.select
+  end
+
+  test "select should explode a * column" do
+    query = "select *"
+    r = TestReporting.from_params({:tq => query})
+    r.virtual_column(:virtual) { |row| "" }
+    assert_equal %w(name age address virtual), r.select
+  end
+
+  test "from_parmas should set group_by" do
+    query = "select name group by name"
+    r = TestReporting.from_params({:tq => query})
+    assert_equal ['name'], r.group_by
   end
 
   test "from_params should also take regular get parameters (not the query) into account" do
@@ -85,6 +101,12 @@ class ReportingTest < ActiveSupport::TestCase
     assert_equal :string, columns[0][:type]
     assert_equal 'Nom',   columns[0][:label]
     assert_equal 'Age',   columns[1][:label]
+  end
+
+  test "columns method should strip all data, that does not belong in the datasource (virtual column proc)" do
+    @reporting.virtual_column(:virtual) { |row| '' }
+    @reporting.select = ['virtual']
+    assert !@reporting.columns.first.has_key?('proc')
   end
 
   test "add data" do
@@ -139,6 +161,7 @@ class ReportingTest < ActiveSupport::TestCase
     @reporting.select = %w(summary)
     assert_equal 1, @reporting.columns.size
   end
+
 
   ################################
   # Test ActiveRecord extension
