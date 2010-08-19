@@ -7,8 +7,15 @@
 #
 # The ActiveRecord extension is copied from the ActiveForm plugin (http://github.com/remvee/active_form)
 class Reporting < ActiveRecord::Base
-  attr_accessor :query, :group_by, :select, :column_labels, :formatters
+  attr_accessor :query, :group_by, :select, :column_labels, :formatters, :virtual_columns
   cattr_reader :datasource_columns
+
+  def initialize(*args)
+    @virtual_columns = HashWithIndifferentAccess.new
+    @formatters      = HashWithIndifferentAccess.new
+    @column_labels   = HashWithIndifferentAccess.new
+    super(*args)
+  end
 
   # 'Abstract' method that has to be overridden by subclasses
   # Sets the @data and @columns instance variables depending on the configuration
@@ -21,7 +28,7 @@ class Reporting < ActiveRecord::Base
   # Calls the aggregate method first if rows do not exist
   def rows
     aggregate if @rows.nil?
-    @rows
+    @rows || []
   end
 
   # Add a row to the rows set returned by rows
@@ -32,9 +39,11 @@ class Reporting < ActiveRecord::Base
     row = HashWithIndifferentAccess.new(row)
     @rows ||= []
     @rows << select.inject([]) do |columns, column|
-      if formatters[column.to_sym].is_a?(Proc)
+      if is_virtual_column?(column)
+        columns << virtual_columns[column][:proc].call(row)
+      elsif has_formatter?(column)
         columns << {
-          :f => formatters[column.to_sym].call(row[column]),
+          :f => formatters[column.to_sym].call(row[column], row),
           :v => row[column]
         }
       else
@@ -45,22 +54,18 @@ class Reporting < ActiveRecord::Base
 
   # Lazy getter for the columns object
   def columns
+    all_columns = datasource_columns.merge(virtual_columns)
     select.inject([]) do |columns, column|
-      columns << datasource_columns[column].merge({
+      columns << all_columns[column].merge({
         :id    => column.to_s,
-        :label => column_labels[column.to_sym] ? column_labels[column.to_sym] : column.humanize
+        :label => column_labels[column.to_sym] ? column_labels[column.to_sym] : column.to_s.humanize
       })
     end
   end
 
-  # Accessor for column labels
-  def column_labels
-    @column_labels ||= {}
-  end
-
-  # Accessor for columns formatters
-  def formatters
-    @formatters ||= {}
+  # Returns true if formatter formatter for a certain column is defined
+  def has_formatter?(column_name)
+    @formatters.has_key?(column_name)
   end
 
   # Convenience method for formatter definition
@@ -94,6 +99,20 @@ class Reporting < ActiveRecord::Base
     @group_by ||= []
   end
 
+  # Return true if virtual column with name exists
+  def is_virtual_column?(name)
+    virtual_columns.has_key?(name)
+  end
+
+  # Sets up a virtual column with name and block with is called with a row
+  # and returns a string or a hash like {v: "real value", f: "formatted value"}
+  def virtual_column(name, type = :string, &block)
+    virtual_columns[name.to_sym] = {
+      :type => type,
+      :proc => block
+    }
+  end
+
   class << self
     # TODO docu
     def column(name, options = {})
@@ -104,7 +123,7 @@ class Reporting < ActiveRecord::Base
 
     # Uses the +simple_parse+ method of the SqlParser to setup a reporting
     # from a query. The where clause is intepreted as reporting configuration (activerecord attributes)
-    def from_params(params)
+    def from_params(params, key = self.name.underscore.split('/').last)
       return self.new unless params.has_key?(:tq)
 
       query = GoogleDataSource::DataSource::SqlParser.simple_parse(params[:tq])
@@ -126,6 +145,7 @@ class Reporting < ActiveRecord::Base
         end
       end
       attributes[:group_by] = query.groupby
+      attributes.merge!(params[key]) if params.has_key?(key)
       reporting = self.new(attributes.symbolize_keys)
       reporting.query = params[:tq]
       reporting

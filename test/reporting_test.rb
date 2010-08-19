@@ -5,14 +5,14 @@ class ReportingTest < ActiveSupport::TestCase
     attr_reader :aggregate_calls
     filter :name
     filter :from_date, :type => :date
-    filter :to_date, :type => :date
+    filter :to_date,   :type => :date
 
-    column :name,    :type => :string
-    column :age,     :type => :number
-    column :address, :type => :string
+    column :name,      :type => :string
+    column :age,       :type => :number
+    column :address,   :type => :string
 
     def select
-      %w(name age)
+      @select ||= %w(name age)
     end
 
     def initialize(*args)
@@ -49,6 +49,18 @@ class ReportingTest < ActiveSupport::TestCase
     r = TestReporting.from_params({:tq => query})
     assert_equal "test name", r.name
     assert_equal "2010-01-01".to_date, r.from_date
+  end
+
+  test "from_params should also take regular get parameters (not the query) into account" do
+    params = HashWithIndifferentAccess.new({:tq => '', :test_reporting => {:name => 'John'}})
+    r = TestReporting.from_params(params)
+    assert_equal "John", r.name
+  end
+
+  test "from_params should also take regular get parameters into account (with custom param name)" do
+    params = HashWithIndifferentAccess.new({:tq => '', :reporting => {:name => 'John'}})
+    r = TestReporting.from_params(params, :reporting)
+    assert_equal "John", r.name
   end
 
   test "from_params_with_date_range" do
@@ -100,6 +112,32 @@ class ReportingTest < ActiveSupport::TestCase
     end
     @reporting.add_row({ :name => 'John', :age => 30, :address => 'Samplestreet 11'})
     assert_equal "<strong>John</strong>", @reporting.rows.first[0][:f]
+  end
+
+  test "has_virtual_column?" do
+    assert !@reporting.is_virtual_column?(:summary)
+    @reporting.virtual_column :summary do |row|
+      "#{row[:name]} - #{row[:age]}"
+    end
+    assert @reporting.is_virtual_column?(:summary)
+  end
+
+  test "virtual column rendering" do
+    @reporting.virtual_column :summary do |row|
+      "#{row[:name]} - #{row[:age]}"
+    end
+    @reporting.select = %w(summary)
+    @reporting.add_row({ :name => 'John', :age => 30, :address => 'Samplestreet 11'})
+
+    assert_equal 'John - 30', @reporting.rows.first.first
+  end
+
+  test "column setup for virtual columns" do
+    @reporting.virtual_column :summary do |row|
+      "#{row[:name]} - #{row[:age]}"
+    end
+    @reporting.select = %w(summary)
+    assert_equal 1, @reporting.columns.size
   end
 
   ################################
