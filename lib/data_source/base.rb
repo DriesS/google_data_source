@@ -145,7 +145,7 @@ module GoogleDataSource
           elsif item.is_a?(Array)
             data << item
           # use column ids if item is an active record
-          elsif item.is_a?(ActiveRecord::Base)
+          elsif item.is_a?(ActiveRecord::Base) || item.is_a?(ActiveResource::Base)
             data << columns.map { |c| item.send(c.id) }
           # use to_array method
           else
