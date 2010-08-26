@@ -10,7 +10,9 @@ module GoogleDataSource
         <<-EOT
         datasource = GoogleDataSource::DataSource::Base.from_params(params)
         #{template.source.dup}
-        datasource.callback = "$('\\\#\#{datasource.reporting.form_id}').html(\#{render(:partial => datasource.reporting.partial).to_json});" unless datasource.reporting.nil?
+        if !datasource.reporting.nil? && datasource.reporting.has_form?
+          datasource.callback = "$('\\\#\#{datasource.reporting.form_id}').html(\#{render(:partial => datasource.reporting.partial).to_json});"
+        end
         datasource.response
         EOT
       end

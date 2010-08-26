@@ -7,12 +7,15 @@ class ReportingTest < ActiveSupport::TestCase
     filter :from_date, :type => :date
     filter :to_date,   :type => :date
 
+    select_default   %w(name age)
+    group_by_default %w(name)
+
     column :name,      :type => :string
     column :age,       :type => :number
     column :address,   :type => :string
 
     def initialize(*args)
-      @select = %w(name age)
+      #@select = %w(name age)
       @aggregate_calls = 0
       super(*args)
     end
@@ -21,6 +24,21 @@ class ReportingTest < ActiveSupport::TestCase
       @aggregate_calls += 1
       @rows = []
     end
+  end
+
+  class TestReportingB < Reporting
+    column :name_b, :type => :string
+    column :age_b,  :type => :number
+
+    select_default %w(name_b)
+    group_by_default %w(age_b)
+  end
+
+  class TestFormReporting < Reporting
+    has_form :partial => "partial.html"
+  end
+
+  class TestNoFormReporting < Reporting
   end
 
   def setup
@@ -47,6 +65,22 @@ class ReportingTest < ActiveSupport::TestCase
     assert_equal "test name", r.name
     assert_equal "2010-01-01".to_date, r.from_date
   end
+
+  test "select default value" do
+    r = TestReporting.new
+    assert_equal %w(name age), r.select
+  end
+
+  test "group by default value" do
+    r = TestReporting.new
+    assert_equal %w(name), r.group_by
+  end
+
+  #test "overriding default values an instance level" do
+  #  r = TestReporting.new
+  #  r.instance_variable_set(:@defaults, {:select => []})
+  #  assert_equal %w(), r.select
+  #end
 
   test "from_params should set select" do
     query = "select name"
@@ -118,6 +152,14 @@ class ReportingTest < ActiveSupport::TestCase
     assert_equal     30, @reporting.rows.first[1]
   end
 
+  test "add row should accept OpenStruct like objects" do
+    @reporting.add_row(OpenStruct.new(:name => 'John', :age => 30, :address => 'Samplestreet 11'))
+    assert_equal      1, @reporting.rows.size
+    assert_equal      2, @reporting.rows.first.size
+    assert_equal 'John', @reporting.rows.first[0]
+    assert_equal     30, @reporting.rows.first[1]
+  end
+
   test "use formatter when adding data" do
     @reporting.formatters[:name] = Proc.new do |name|
       "<strong>#{name}</strong>"
@@ -134,6 +176,14 @@ class ReportingTest < ActiveSupport::TestCase
     end
     @reporting.add_row({ :name => 'John', :age => 30, :address => 'Samplestreet 11'})
     assert_equal "<strong>John</strong>", @reporting.rows.first[0][:f]
+  end
+
+  test "the formatter should be called by add_row with the required columns" do
+    @reporting.formatter(:name, :age) do |name, age|
+      "#{name} = #{age}"
+    end
+    @reporting.add_row({ :name => 'John', :age => 30, :address => 'Samplestreet 11'})
+    assert_equal "John = 30", @reporting.rows.first[0][:f]
   end
 
   test "has_virtual_column?" do
@@ -160,6 +210,75 @@ class ReportingTest < ActiveSupport::TestCase
     end
     @reporting.select = %w(summary)
     assert_equal 1, @reporting.columns.size
+  end
+
+  test "should consider type option when adding a virtual_column" do
+    @reporting.virtual_column :one, :type => :number do |row|
+      1
+    end
+    assert_equal :number, @reporting.virtual_columns[:one][:type]
+  end
+
+  test "should add columns to required_columns if option is give in virtual_column" do
+    @reporting.virtual_column :one, :requires => [:age] { |row| 1 }
+    assert @reporting.required_columns.include?('age')
+  end
+
+  test "should add columns to required_columns if option is give in formatter" do
+    @reporting.formatter(:age, :name) { |row| 1 }
+    @reporting.select = %w(age)
+    @reporting.group_by = []
+    assert_equal 2, @reporting.required_columns.size
+    assert @reporting.required_columns.include?('name')
+    assert @reporting.required_columns.include?('age')
+  end
+
+  test "only include required column if dependent column is selected" do
+    @reporting.formatter :age, :requires => [:name] { |row| 1 }
+    @reporting.select   = %w(address)
+    @reporting.group_by = []
+    assert !@reporting.required_columns.include?('name')
+    assert !@reporting.required_columns.include?('age')
+  end
+
+  test "has_form class method" do
+    reporting = TestFormReporting.new
+    assert reporting.has_form?
+    assert_equal 'partial.html', reporting.partial
+  end
+
+  test "without has_form class method" do
+    reporting = TestNoFormReporting.new
+    assert !reporting.has_form?
+  end
+
+  test "different subclasses can have different sets of columns" do
+    assert TestReporting.datasource_columns != TestReportingB.datasource_columns
+  end
+
+  test "different subclasses can have different default selects and groupings" do
+    a = TestReporting.new
+    b = TestReportingB.new
+    assert a.group_by != b.group_by
+    assert a.select != b.select
+  end
+
+  test "should set limit and offset in from_params" do
+    reporting = TestReporting.from_params(:tq => "limit 10 offset 5")
+    assert_equal 10, reporting.limit
+    assert_equal 5, reporting.offset
+  end
+
+  test "should set the order_by attribute in from_params" do
+    reporting = TestReporting.from_params(:tq => "order by name")
+    assert_equal ['name', :asc], reporting.order_by
+  end
+
+  test "should return nil for order by, limit and offset is not set" do
+    reporting = TestReporting.new
+    assert_nil reporting.order_by
+    assert_nil reporting.limit
+    assert_nil reporting.offset
   end
 
 

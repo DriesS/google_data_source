@@ -9,6 +9,7 @@ module GoogleDataSource
           reporting = args.first[:reporting]
           datasource = GoogleDataSource::DataSource::Base.from_params(params)
           datasource.set(reporting)
+          datasource.callback = "$('##{reporting.form_id}').html(#{render(:partial => reporting.partial).to_json});" if reporting.has_form?
           render_for_text datasource.response
         else
           render_without_reporting(*args)

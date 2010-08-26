@@ -52,6 +52,10 @@ class SqlParserTest < ActiveSupport::TestCase
     end
   end
 
+  test "simple groupby parser should return empty array if no group by statement is given" do
+    assert_equal [], SqlParser.simple_parse("").groupby
+  end
+
   test "simple where parser" do
     conditions = SqlParser.simple_parse("where id = 1 and name = `foo bar` and `foo bar` = 123").conditions
 
@@ -73,6 +77,14 @@ class SqlParserTest < ActiveSupport::TestCase
     assert_equal '2010-01-01', conditions['date'].first.value
     assert_equal '<', conditions['date'].last.op
     assert_equal '2010-02-01', conditions['date'].last.value
+  end
+
+  test "limit should be nil if empty in query" do
+    assert_nil SqlParser.simple_parse("").limit
+  end
+
+  test "offset should be nil if empty in query" do
+    assert_nil SqlParser.simple_parse("").offset
   end
 
 end

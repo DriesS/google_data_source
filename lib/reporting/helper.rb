@@ -40,11 +40,33 @@ module GoogleDataSource
       # Shows a select tag for grouping selection on a given reporting
       # TODO more docu
       # TODO really take namespace from classname?
-      def group_by_select(object, select_options, i = 1, options = {})
+      def reporting_group_by_select(object, select_options, i = 1, options = {})
        tag_name = "#{object.class.name.underscore}[groupby(#{i}i)]"
        current_option = (object.group_by.size < i) ? nil : object.group_by[i-1]
        option_tags = options_for_select(select_options, current_option)
        select_tag(tag_name, option_tags, options)
+      end
+
+      # Shows a Multiselect box for the columns to 'select'
+      def reporting_select_select(object, select_options, options = {})
+        tag_name = "#{object.class.name.underscore}[select]"
+        option_tags = options_for_select(select_options, object.select)
+        select_tag(tag_name, option_tags, :multiple => true)
+      end
+
+      # Registers form subit hooks
+      # This way the standard form serialization can be overwritten
+      def reporting_form_hooks(reporting)
+        hooks = OpenStruct.new
+        yield(hooks)
+
+        json = []
+        %w(select).each do |hook|
+          next if hooks.send(hook).nil?
+          json << "#{hook}: function(){#{hooks.send hook}}"
+        end
+        js = "DataSource.FilterForm.setHooks(#{@super_reporting.form_id.to_json}, {#{json.join(', ')}});"
+        javascript_tag(js)
       end
     end
   end

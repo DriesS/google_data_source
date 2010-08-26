@@ -62,7 +62,7 @@ module GoogleDataSource
 
           # Helper to the +simple_parse+ method
           def simple_groupby_parser(groupby)
-            return nil if groupby.nil?
+            return [] if groupby.nil?
             groupby.exprs.collect(&:to_s)
           end
 

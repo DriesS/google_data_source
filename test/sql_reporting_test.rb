@@ -55,10 +55,6 @@ class SqlReportingTest < ActiveSupport::TestCase
     assert_equal 'christian_name', @reporting.sql_group_by([], 'firstname' => 'christian_name')
   end
 
-  test "group_by and select should be able to append columns" do
-    flunk
-  end
-
   test "select some sql and some ruby columns" do
     reporting = reporting_from_query("select firstname, fullname")
     assert_equal "firstname", reporting.sql_select
@@ -86,6 +82,26 @@ class SqlReportingTest < ActiveSupport::TestCase
     assert_equal "firstname", reporting.sql_group_by
   end
 
+  test "sql_group_by should be nil if no grouping exists" do
+    reporting = reporting_from_query("")
+    assert_nil reporting.sql_group_by
+  end
+
+  test "sql_order_by" do
+    reporting = reporting_from_query("order by firstname")
+    assert_equal "firstname ASC", reporting.sql_order_by
+  end
+
+  test "sql_order_by shoul dconsider mapping" do
+    reporting = reporting_from_query("order by firstname")
+    assert_equal "name ASC", reporting.sql_order_by('firstname' => 'name')
+  end
+
+  test "sql_order_by should return nil if order_by is not set" do
+    reporting = reporting_from_query("")
+    assert_nil reporting.sql_order_by
+  end
+
   test "use column name mappings in sql_group_by" do
     reporting = reporting_from_query("group by firstname, lastname, fullname")
     assert_equal "firstname, name", reporting.sql_group_by
@@ -105,6 +121,37 @@ class SqlReportingTest < ActiveSupport::TestCase
     reporting.columns.each do |column|
       assert !column.has_key?(:sql)
     end
+  end
+
+  test "join according to the used columns" do
+    reporting = reporting_from_query("select firstname")
+    assert_equal "", reporting.sql_joins
+
+    reporting = reporting_from_query("select company_name")
+    reporting.sql_select
+    assert_equal "JOIN companies", reporting.sql_joins
+  end
+
+  test "join if columns are added with mark_as_used" do
+    reporting = reporting_from_query("select firstname")
+    assert_equal "", reporting.sql_joins
+    reporting.mark_as_used('company_name')
+    assert_equal "JOIN companies", reporting.sql_joins
+  end
+
+  test "include required columns in sql_select statement" do
+    reporting = reporting_from_query("select firstname")
+    reporting.set_required_columns 'firstname', [:company_name]
+    select = reporting.sql_select.split(', ')
+    assert_equal 2, select.size
+    assert select.include?('firstname')
+    assert select.include?('companies.name company_name')
+  end
+
+  test "include joins for required columns" do
+    reporting = reporting_from_query("select firstname")
+    reporting.set_required_columns 'firstname', [:company_name]
+    assert_equal "JOIN companies", reporting.sql_joins
   end
 
   def reporting_from_query(query)

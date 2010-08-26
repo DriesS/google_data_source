@@ -2,15 +2,36 @@
 # Offers a variety of helpers to manage reportings that are generated via pure SQL queries
 #
 class SqlReporting < Reporting
+  attr_reader :columns_used
+
+  # Container for columns used by any (select, group by, where) statement.
+  # Used by the joins method to retrieve the joins needed
+  def columns_used
+    @columns_used ||= []
+  end
+
+  # Marks a column as used so the connected joins will be included
+  def mark_as_used(column)
+    columns_used << column.to_sym
+  end
 
   # Returns the columns string for the select clause
   def sql_select(additional_columns = [], mapping = {})
-    (map_columns((select + group_by).uniq, mapping, true) << additional_columns).flatten.join(', ')
+    (map_columns(required_columns.uniq, mapping, true) << additional_columns).flatten.join(', ')
   end
 
   # Returns the columns string for the group by clause
   def sql_group_by(additional_columns = [], mapping = {})
-    (map_columns(group_by, mapping) << additional_columns).flatten.join(', ')
+    result = (map_columns(group_by, mapping) << additional_columns).flatten.join(', ')
+    result.empty? ? nil : result
+  end
+
+  def sql_order_by(mapping = {})
+    return nil if order_by.nil?
+    column    = order_by[0]
+    direction = order_by[1]
+    column    = mapping.has_key?(column) ? mapping[column] : sql_column_name(column)
+    "#{column} #{direction.to_s.upcase}"
   end
 
   # TODO make protected?
@@ -30,7 +51,11 @@ class SqlReporting < Reporting
 
   # Returns the join statements which are needed for the given +columns+
   def sql_joins(*columns)
-    columns = select + group_by + where.keys if columns.empty?
+    if columns.empty?
+      columns = columns_used + select + group_by + required_columns
+      columns += where.keys if self.respond_to?(:where)
+    end
+    columns.uniq!
     columns.flatten!
 
     # get all tables needed

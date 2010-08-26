@@ -64,9 +64,9 @@ module GoogleDataSource
         when "string"
           value
         when "date"
-          DataDate.new(value.is_a?(String) ? Date.parse(value) : value)
+          DataDate.new(value.is_a?(String) ? Date.parse(value) : value) rescue nil
         when "datetime"
-          DataDateTime.new(value.is_a?(String) ? DateTime.parse(value) : value)
+          DataDateTime.new(value.is_a?(String) ? DateTime.parse(value) : value) rescue nil
         when "timeofday"
           [ value.hour, value.min, value.sec, value.usec / 1000 ]
         end
