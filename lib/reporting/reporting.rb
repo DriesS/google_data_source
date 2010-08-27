@@ -74,9 +74,19 @@ class Reporting < ActiveRecord::Base
         :type => all_columns[column][:type]
       }.merge({
         :id    => column.to_s,
-        :label => column_labels[column.to_sym] ? column_labels[column.to_sym] : column.to_s.humanize
+        :label => column_label(column) #column_labels[column.to_sym] ? column_labels[column.to_sym] : column.to_s.humanize
       })
     end
+  end
+
+  # Retrieves the I18n translation of the column label
+  def column_label(column, default = nil)
+    defaults = ['reportings.{{model}}.{{column}}', 'models.attributes.{{model}}.{{column}}'].collect do |scope|
+      scope.gsub!('{{model}}', self.class.name.underscore.gsub('/', '.'))
+      scope.gsub('{{column}}', column.to_s)
+    end.collect(&:to_sym)
+    defaults << column.to_s.humanize
+    column_labels[column.to_sym] || I18n.t(defaults.shift, :default => defaults)
   end
 
   # Returns true if formatter formatter for a certain column is defined
@@ -200,6 +210,8 @@ class Reporting < ActiveRecord::Base
               attributes["to_#{k}"] = condition.value
             when '>='
               attributes["from_#{k}"] = condition.value
+            when 'in'
+              attributes["in_#{k}"] = condition.value
             else
               # raise exception for unsupported operator?
             end

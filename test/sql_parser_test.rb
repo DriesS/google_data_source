@@ -33,6 +33,14 @@ class SqlParserTest < ActiveSupport::TestCase
     assert_equal "", result.where.right.to_s
   end
 
+  test "the 'in' statement in where conditions" do
+    result = SqlParser.parse("where foo in ('1','2')")
+    assert_equal "foo", result.where.expr.to_s
+    assert_equal 2, result.where.vals.size
+    assert_equal '1', result.where.vals[0].to_s
+    assert_equal '2', result.where.vals[1].to_s
+  end
+
   ###############################
   # Test the simple parser
   ###############################
@@ -87,4 +95,16 @@ class SqlParserTest < ActiveSupport::TestCase
     assert_nil SqlParser.simple_parse("").offset
   end
 
+  test "raise exception if operator = is used besides of other operators in where clause" do
+    assert_raise GoogleDataSource::DataSource::SimpleSqlException do
+      SqlParser.simple_parse("where foo = '1' and foo >= 2")
+    end
+  end
+
+  test "parsing in( ) expressions in where clause" do
+    conditions = SqlParser.simple_parse("where foo in ('1','2')").conditions
+    assert_equal 1, conditions['foo'].size
+    assert_equal 'in', conditions['foo'].first.op
+    assert_equal %w(1 2), conditions['foo'].first.value
+  end
 end

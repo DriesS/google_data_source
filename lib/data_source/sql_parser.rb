@@ -41,10 +41,15 @@ module GoogleDataSource
                 result[predicate.left.to_s] = predicate.right.to_s
               when :"<", :">", :">=", :"<=", :"<>", :"!="
                 result[predicate.left.to_s] ||= Array.new
+                raise SimpleSqlException.new("Condition clach") unless result[predicate.left.to_s].is_a?(Array)
                 result[predicate.left.to_s] << OpenStruct.new(:op => predicate.op.to_s, :value => predicate.right.to_s)
               else
                 raise SimpleSqlException.new("Comparator forbidden (use only '=,<,>')") unless predicate.op == :"="
               end
+            when 'InPredicate'
+              result[predicate.expr.to_s] ||= Array.new
+              raise SimpleSqlException.new("Condition clach") unless result[predicate.expr.to_s].is_a?(Array)
+              result[predicate.expr.to_s] << OpenStruct.new(:op => 'in', :value => predicate.vals.map(&:to_s))
             when 'NilClass'
               # do nothing
             else

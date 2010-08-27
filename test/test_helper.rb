@@ -7,6 +7,10 @@ require 'active_record'
 require "#{File.expand_path(File.dirname(__FILE__))}/../init"
 require 'mocha'
 
+# Setup I18n stuff
+I18n.load_path << Dir[File.join(File.expand_path(File.dirname(__FILE__)), 'locales', '*.yml')]
+I18n.default_locale = :en
+
 # Setup Database and Models
 ActiveRecord::Base.establish_connection(
   :adapter => "sqlite3",

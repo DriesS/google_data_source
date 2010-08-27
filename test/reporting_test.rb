@@ -6,6 +6,7 @@ class ReportingTest < ActiveSupport::TestCase
     filter :name
     filter :from_date, :type => :date
     filter :to_date,   :type => :date
+    filter :in_foo
 
     select_default   %w(name age)
     group_by_default %w(name)
@@ -76,12 +77,6 @@ class ReportingTest < ActiveSupport::TestCase
     assert_equal %w(name), r.group_by
   end
 
-  #test "overriding default values an instance level" do
-  #  r = TestReporting.new
-  #  r.instance_variable_set(:@defaults, {:select => []})
-  #  assert_equal %w(), r.select
-  #end
-
   test "from_params should set select" do
     query = "select name"
     r = TestReporting.from_params({:tq => query})
@@ -127,7 +122,8 @@ class ReportingTest < ActiveSupport::TestCase
 
   test "get column definitions with respect to custom column labels and select" do
     @reporting.column_labels = {
-      :name => "Nom"
+      :name => "Nom",
+      :age => "Age"
     }
     columns = @reporting.columns
     assert_equal 2,       columns.size
@@ -281,6 +277,18 @@ class ReportingTest < ActiveSupport::TestCase
     assert_nil reporting.offset
   end
 
+  test "parse in( ) statement and put in 'in_xxx' attribute" do
+    reporting = TestReporting.from_params(:tq => "where foo in (1, 2)")
+    assert_equal %w(1 2), reporting.in_foo
+  end
+
+  test "translation of column labels" do
+    @reporting.column_labels[:name] = 'foo'
+    assert_equal 'foo', @reporting.column_label(:name)
+    assert_equal 'AgeReportings', @reporting.column_label(:age)
+    assert_equal 'AddressModels', @reporting.column_label(:address)
+
+  end
 
   ################################
   # Test ActiveRecord extension

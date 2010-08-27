@@ -1,0 +1,6 @@
+en:
+  reportings:
+    reporting_test:
+      test_reporting:
+        name: NameReportings
+        age: AgeReportings
