@@ -21,7 +21,10 @@ class SqlReporting < Reporting
   end
 
   # Returns the columns string for the group by clause
-  def sql_group_by(additional_columns = [], mapping = {})
+  #def sql_group_by(additional_columns = [], mapping = {})
+  def sql_group_by(*args)
+    mapping = args.extract_options! || {}
+    additional_columns = args.first || []
     result = (map_columns(group_by, mapping) << additional_columns).flatten.join(', ')
     result.empty? ? nil : result
   end
@@ -52,7 +55,7 @@ class SqlReporting < Reporting
   # Returns the join statements which are needed for the given +columns+
   def sql_joins(*columns)
     if columns.empty?
-      columns = columns_used + select + group_by + required_columns
+      columns = columns_used + required_columns
       columns += where.keys if self.respond_to?(:where)
     end
     columns.uniq!
@@ -98,7 +101,7 @@ class SqlReporting < Reporting
     return column.to_s if sql == true
 
     parts = []
-    parts << sql[:table] if sql[:table]
+    parts << sql[:table] if sql[:table] && !sql[:column].is_a?(String)
     parts << (sql[:column] || column).to_s
     sql_name = parts.join('.')
 

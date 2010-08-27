@@ -14,6 +14,7 @@ class SqlReportingTest < ActiveSupport::TestCase
     column :company_name, :type => :string, :sql => { :table => :companies, :column => :name }
     column :fullname,     :type => :string
     column :building_no,  :type => :number, :sql => { :table => :buildings, :column => :number }
+    column :literal_column, :type => :string, :sql => { :table => :companies, :column => 'literal' }
 
     def initialize(*args)
       @aggregate_calls = 0
@@ -152,6 +153,15 @@ class SqlReportingTest < ActiveSupport::TestCase
     reporting = reporting_from_query("select firstname")
     reporting.set_required_columns 'firstname', [:company_name]
     assert_equal "JOIN companies", reporting.sql_joins
+  end
+
+  test "sql_group_by should recognize the mapping if it's the first parameter" do
+    @reporting.group_by = %w(firstname)
+    assert_equal "christian_name", @reporting.sql_group_by('firstname' => 'christian_name')
+  end
+
+  test "should not append table name if column name is give as string" do
+    assert_equal 'literal', @reporting.sql_column_name(:literal_column)
   end
 
   def reporting_from_query(query)

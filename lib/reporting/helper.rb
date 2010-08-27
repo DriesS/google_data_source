@@ -41,6 +41,10 @@ module GoogleDataSource
       # TODO more docu
       # TODO really take namespace from classname?
       def reporting_group_by_select(object, select_options, i = 1, options = {})
+       if (select_options.is_a?(Array))
+         select_options.collect! { |column| [object.column_label(column), column] }
+         select_options.unshift('') if options.delete(:include_blank)
+       end
        tag_name = "#{object.class.name.underscore}[groupby(#{i}i)]"
        current_option = (object.group_by.size < i) ? nil : object.group_by[i-1]
        option_tags = options_for_select(select_options, current_option)
