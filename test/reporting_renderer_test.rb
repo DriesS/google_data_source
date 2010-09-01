@@ -6,12 +6,13 @@ class ReportingRendererTest < ActiveSupport::TestCase
       def test(reporting)
         render :reporting => reporting
       end
+
+      def regular
+        render :text => "foo"
+      end
     end
 
     class TestReporting < ::Reporting
-      def has_form?
-        true
-      end
     end
 
     reporting  = TestReporting.new
@@ -22,12 +23,13 @@ class ReportingRendererTest < ActiveSupport::TestCase
     controller.stubs(:render_for_text).returns('')
     GoogleDataSource::DataSource::Base.stubs(:from_params).returns(datasource)
 
-    # rendering a reporting with form should trigger the rendering of the form partial
-    controller.expects(:render_without_reporting).with({:partial => reporting.partial})
+    # regular rendering should still work
+    controller.expects(:render_without_reporting).with({:text => "foo"})
 
     # the response of the data source has to be generated
     datasource.expects(:response).returns("")
 
     controller.test(reporting)
+    controller.regular
   end
 end

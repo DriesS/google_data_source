@@ -7,9 +7,9 @@ module GoogleDataSource
     
       def to_json(options=nil)
         if @date
-          "new Date(#{@date.year}, #{@date.month-1}, #{@date.day})"
+          "\"Date(#{@date.year}, #{@date.month-1}, #{@date.day})\""
         else
-          ""
+          "null"
         end
       end
     end

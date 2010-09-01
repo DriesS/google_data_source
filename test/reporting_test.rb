@@ -23,7 +23,7 @@ class ReportingTest < ActiveSupport::TestCase
 
     def aggregate
       @aggregate_calls += 1
-      @rows = []
+      []
     end
   end
 
@@ -35,29 +35,14 @@ class ReportingTest < ActiveSupport::TestCase
     group_by_default %w(age_b)
   end
 
-  class TestFormReporting < Reporting
-    has_form :partial => "partial.html"
-  end
-
-  class TestNoFormReporting < Reporting
-  end
-
   def setup
     @reporting = TestReporting.new
   end
 
   test "rows should call aggregate once and only once" do
-    @reporting.rows
-    @reporting.rows
+    @reporting.data
+    @reporting.data
     assert_equal 1, @reporting.aggregate_calls
-  end
-
-  test "partial" do
-    assert_equal "test_reporting_form.html", @reporting.partial
-  end
-
-  test "form_id" do
-    assert_equal "test_reporting_form", @reporting.form_id
   end
 
   test "from_params" do
@@ -86,7 +71,7 @@ class ReportingTest < ActiveSupport::TestCase
   test "select should explode a * column" do
     query = "select *"
     r = TestReporting.from_params({:tq => query})
-    r.virtual_column(:virtual) { |row| "" }
+    r.add_virtual_column(:virtual)
     assert_equal %w(name age address virtual), r.select
   end
 
@@ -121,131 +106,10 @@ class ReportingTest < ActiveSupport::TestCase
   end
 
   test "get column definitions with respect to custom column labels and select" do
-    @reporting.column_labels = {
-      :name => "Nom",
-      :age => "Age"
-    }
     columns = @reporting.columns
     assert_equal 2,       columns.size
     assert_equal 'name',  columns[0][:id]
     assert_equal :string, columns[0][:type]
-    assert_equal 'Nom',   columns[0][:label]
-    assert_equal 'Age',   columns[1][:label]
-  end
-
-  test "columns method should strip all data, that does not belong in the datasource (virtual column proc)" do
-    @reporting.virtual_column(:virtual) { |row| '' }
-    @reporting.select = ['virtual']
-    assert !@reporting.columns.first.has_key?('proc')
-  end
-
-  test "add data" do
-    assert_equal [], @reporting.rows
-    @reporting.add_row({ :name => 'John', :age => 30, :address => 'Samplestreet 11'})
-    assert_equal      1, @reporting.rows.size
-    assert_equal      2, @reporting.rows.first.size
-    assert_equal 'John', @reporting.rows.first[0]
-    assert_equal     30, @reporting.rows.first[1]
-  end
-
-  test "add row should accept OpenStruct like objects" do
-    @reporting.add_row(OpenStruct.new(:name => 'John', :age => 30, :address => 'Samplestreet 11'))
-    assert_equal      1, @reporting.rows.size
-    assert_equal      2, @reporting.rows.first.size
-    assert_equal 'John', @reporting.rows.first[0]
-    assert_equal     30, @reporting.rows.first[1]
-  end
-
-  test "use formatter when adding data" do
-    @reporting.formatters[:name] = Proc.new do |name|
-      "<strong>#{name}</strong>"
-    end
-    @reporting.add_row({ :name => 'John', :age => 30, :address => 'Samplestreet 11'})
-    assert @reporting.rows.first[0].has_key?(:f)
-    assert @reporting.rows.first[0].has_key?(:v)
-    assert_equal "<strong>John</strong>", @reporting.rows.first[0][:f]
-  end
-
-  test "setting formatter with formatter convenience method" do
-    @reporting.formatter(:name) do |name|
-      "<strong>#{name}</strong>"
-    end
-    @reporting.add_row({ :name => 'John', :age => 30, :address => 'Samplestreet 11'})
-    assert_equal "<strong>John</strong>", @reporting.rows.first[0][:f]
-  end
-
-  test "the formatter should be called by add_row with the required columns" do
-    @reporting.formatter(:name, :age) do |name, age|
-      "#{name} = #{age}"
-    end
-    @reporting.add_row({ :name => 'John', :age => 30, :address => 'Samplestreet 11'})
-    assert_equal "John = 30", @reporting.rows.first[0][:f]
-  end
-
-  test "has_virtual_column?" do
-    assert !@reporting.is_virtual_column?(:summary)
-    @reporting.virtual_column :summary do |row|
-      "#{row[:name]} - #{row[:age]}"
-    end
-    assert @reporting.is_virtual_column?(:summary)
-  end
-
-  test "virtual column rendering" do
-    @reporting.virtual_column :summary do |row|
-      "#{row[:name]} - #{row[:age]}"
-    end
-    @reporting.select = %w(summary)
-    @reporting.add_row({ :name => 'John', :age => 30, :address => 'Samplestreet 11'})
-
-    assert_equal 'John - 30', @reporting.rows.first.first
-  end
-
-  test "column setup for virtual columns" do
-    @reporting.virtual_column :summary do |row|
-      "#{row[:name]} - #{row[:age]}"
-    end
-    @reporting.select = %w(summary)
-    assert_equal 1, @reporting.columns.size
-  end
-
-  test "should consider type option when adding a virtual_column" do
-    @reporting.virtual_column :one, :type => :number do |row|
-      1
-    end
-    assert_equal :number, @reporting.virtual_columns[:one][:type]
-  end
-
-  test "should add columns to required_columns if option is give in virtual_column" do
-    @reporting.virtual_column :one, :requires => [:age] { |row| 1 }
-    assert @reporting.required_columns.include?('age')
-  end
-
-  test "should add columns to required_columns if option is give in formatter" do
-    @reporting.formatter(:age, :name) { |row| 1 }
-    @reporting.select = %w(age)
-    @reporting.group_by = []
-    assert_equal 2, @reporting.required_columns.size
-    assert @reporting.required_columns.include?('name')
-    assert @reporting.required_columns.include?('age')
-  end
-
-  test "only include required column if dependent column is selected" do
-    @reporting.formatter :age, :requires => [:name] { |row| 1 }
-    @reporting.select   = %w(address)
-    @reporting.group_by = []
-    assert !@reporting.required_columns.include?('name')
-    assert !@reporting.required_columns.include?('age')
-  end
-
-  test "has_form class method" do
-    reporting = TestFormReporting.new
-    assert reporting.has_form?
-    assert_equal 'partial.html', reporting.partial
-  end
-
-  test "without has_form class method" do
-    reporting = TestNoFormReporting.new
-    assert !reporting.has_form?
   end
 
   test "different subclasses can have different sets of columns" do
@@ -283,11 +147,16 @@ class ReportingTest < ActiveSupport::TestCase
   end
 
   test "translation of column labels" do
-    @reporting.column_labels[:name] = 'foo'
-    assert_equal 'foo', @reporting.column_label(:name)
     assert_equal 'AgeReportings', @reporting.column_label(:age)
     assert_equal 'AddressModels', @reporting.column_label(:address)
+  end
 
+  test "the rows method should accept a reqired_columns option" do
+    @reporting.select   = %w(age)
+    @reporting.group_by = []
+    assert_equal %w(age), @reporting.required_columns
+    @reporting.data(:required_columns => %w(name))
+    assert_equal %w(age name), @reporting.required_columns
   end
 
   ################################

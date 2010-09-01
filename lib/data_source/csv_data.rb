@@ -5,7 +5,7 @@ module GoogleDataSource
     class CsvData < Base
       def response
         result = CSV.generate do |csv|
-          csv << cols.map { |col| col[:label] || col[:id] || col[:type] }
+          csv << columns.map { |col| col.label || col.id || col.type }
           data.each do |datarow|
             csv << datarow.map { |c| c.is_a?(Hash) ? c[:v] : c }
           end

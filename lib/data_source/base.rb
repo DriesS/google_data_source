@@ -7,26 +7,69 @@ module GoogleDataSource
       # Callback defines a JavaScript snippet that is appended to the regular
       # data-source reponse. This is currently used to refresh the form in
       # reportings (validation)
-      attr_accessor :callback, :reporting
+      attr_accessor :callback, :reporting, :column_labels, :formatters, :virtual_columns
 
       # Define accessors for the data source data, columns and errors
-      attr_reader :data, :cols, :errors
+      attr_reader :errors
       
       # Creates a new instance and validates it. 
       # Protected method so it can be used from the subclasses
       def initialize(gdata_params)
+        @virtual_columns  = HashWithIndifferentAccess.new
+        @formatters       = HashWithIndifferentAccess.new
+        @column_labels    = HashWithIndifferentAccess.new
+        @required_columns = {}
+
+        @raw_data = []
+        @columns  = []
+
         @params = gdata_params
         @errors = {}
-        @cols = []
-        @data = []
         @version = "0.6"
-        @coltypes = [ "boolean", "number", "string", "date", "datetime", "timeofday"]
-        @colkeys = [:type, :id, :label, :pattern]
       
         validate
       end
       protected :initialize
       
+
+      # Returns true if formatter formatter for a certain column is defined
+      def has_formatter?(column_name)
+        @formatters.has_key?(column_name)
+      end
+
+      # Convenience method for formatter definition
+      def formatter(column, *requires, &block)
+        set_required_columns(column, requires) #if options.has_key?(:requires)
+        formatters[column] = block
+      end
+
+      # Return true if virtual column with name exists
+      def is_virtual_column?(name)
+        virtual_columns.has_key?(name)
+      end
+
+      # Sets up a virtual column with name and block with is called with a row
+      # and returns a string or a hash like {v: "real value", f: "formatted value"}
+      def virtual_column(name, options = {},  &block)
+        @raw_data.add_virtual_column(name, options[:type] || :string) if @raw_data.respond_to?(:add_virtual_column)
+        set_required_columns(name, options[:requires]) if options.has_key?(:requires)
+        virtual_columns[name.to_sym] = {
+          :type => options[:type] || :string,
+          :proc => block
+        }
+      end
+
+      # Getter with empty array default
+      def required_columns
+        required = column_ids.inject([]) { |columns, column| columns << @required_columns[column.to_sym] }.flatten.compact
+        (required + column_ids).map(&:to_s).uniq
+      end
+
+      # Add a list of columns to the list of required columns (columns that have to be fetched)
+      def set_required_columns(column, requires = [])
+        @required_columns[column.to_sym] = requires
+      end
+
       # Creates a new data source object from the get parameters of the data-source
       # request.
       def self.from_params(params)
@@ -89,78 +132,105 @@ module GoogleDataSource
         return self
       end
       
-      # TODO inline this method in +set+
+      # Sets the unformatted data of the datasource
+      # +data+ is an array either of Hash objects or arbitrary objects 
+      # * Hashes must have keys as column ids
+      # * Arbitrary object must repond to column id named methods
       #
-      # Sets the data to be exported. +data+ should be a collection of activerecord object. The 
-      # first index should iterate over rows, the second over columns. Column 
-      # ordering must be the same used in +add_col+ invokations.
-      #
-      # Anything that behaves like a 2-dimensional array and supports +each+ is
-      # a perfectly fine alternative.
-      def set_raw(cols, data)
-        cols.each do |col|
-          raise ArgumentError, "Invalid column type: #{col.type}" if !@coltypes.include?(col.type)
-          @cols << col.data
+      def data=(data)
+        # reset formatted data
+        @data     = nil
+
+        # set unformatted data
+        @raw_data = data
+
+        # register virtual columns
+        if data.respond_to?(:add_virtual_column)
+          @virtual_columns.each { |k, v| data.add_virtual_column(k.to_sym, v[:type]) }
         end
-        # @data should be a 2-dimensional array
-        @data = []
-        data.each do |record|
-          @data << record
-        end
-        #data
-        return self
       end
-      
-      # Set data and columns of the data source.
-      # +items+ can be either:
-      # * A collection of +ActiveRecord+ objects
-      # * A collection of +Array+s
-      # * A collection of objects that respond to a +to_a+ method
-      # * A collection of abitrary object if a block is passed to the method
+
+      # Returns the formatted data in the datasource format
       #
-      # +columns+ can be either:
-      # * +nil+, the columns are then guessed from the +items+ collection
-      # * A collection of +GoogleDataSource::Column+ objects
-      # * A collection of +Hash+es which are then converted to +Column+ objects
-      #
-      # The method takes an optional block which is called for each entry of +items+
-      # The block is supposed to return an array (one entry per column) for each entry
-      # of +items+.
-      def set(items, columns = nil)
-        if items.is_a?(::Reporting)
-          add_error(:reqId, "Form validation failed") and return unless items.valid?
-          self.reporting = items
-          return set(reporting.rows, reporting.columns)
+      def data
+        @data unless @data.nil?
+
+        # check validity
+        if @raw_data.respond_to?(:valid?) && ! @raw_data.valid?
+          add_error(:reqId, "Form validation failed")
+          return
         end
 
-        columns ||= guess_columns(items)
-        columns.map! { |c| c.is_a?(Column) ? c : Column.new(c) }
+        # get data from object (eg. Reporting)
+        data = @raw_data.respond_to?(:data) ?
+          @raw_data.data(:required_columns => required_columns) :
+          @raw_data
 
-        data = []
-        items.each do |item|
-          # use block for row formating
-          if block_given?
-            data << yield(item)
-          # use object if it is already an array
-          elsif item.is_a?(Array)
-            data << item
-          # use column ids if item is an active record
-          elsif item.is_a?(ActiveRecord::Base) || item.is_a?(ActiveResource::Base)
-            data << columns.map { |c| item.send(c.id) }
-          # use to_array method
-          else
-            data << item.to_a
+        # Run formatters and virtual columns
+        @data = data.collect do |row|
+          row = OpenStruct.new(row) if row.is_a?(Hash)
+
+          column_ids.inject([]) do |columns, column|
+            if is_virtual_column?(column)
+              columns << virtual_columns[column][:proc].call(row)
+            elsif has_formatter?(column)
+              columns << {
+                :f => formatters[column.to_sym].call(row),
+                :v => row.send(column)
+              }
+            else
+              columns << row.send(column)
+            end
           end
         end
-        set_raw(columns, data)
+      end
+
+      # Returns the ids of the columns
+      #
+      def column_ids
+        columns.collect(&:id)
+      end
+
+      # Sets the columns which should be sent by the datasource
+      # +columns+ is an array of either Hashes with keys (:id, :type, :label)
+      # or +Column+ objects
+      #
+      def columns=(columns)
+        @columns = columns.map { |c| c.is_a?(Column) ? c : Column.new(c) }
+        @columns.each do |col|
+          raise ArgumentError, "Invalid column type: #{col.type}" unless col.valid?
+        end
+      end
+
+      # Returns the columns in a datasource compatible format
+      # Applies all labels set
+      def columns
+        @columns.each { |c| c.label = column_labels.delete(c.id) if column_labels.has_key?(c.id) }
+        @columns
+      end
+
+      # Make cols alias for json ... classes
+      alias_method :cols, :columns
+      deprecate :cols
+
+      # Sets the raw data and the columns simultaniously and tries to guess the
+      # columns if not set.
+      # +data+ may be an array of rows or an object of a class that support a data(options)
+      # and a columns method
+      #
+      def set(data, columns = nil)
+        self.data     = data
+        self.columns  = columns || guess_columns(@raw_data)
       end
 
       # Tries to get a clever column selection from the items collection.
       # Currently only accounts for ActiveRecord objects
       # +items+ is an arbitrary collection of items as passed to the +set+ method
-      def guess_columns(items)
+      def guess_columns(data)
+        return data.columns if data.respond_to? :columns
+
         columns = []
-        klass = items.first.class
+        klass = data.first.class
         klass.columns.each do |column|
           columns << Column.new({
             :id => column.name,

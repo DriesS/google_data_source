@@ -1,6 +1,7 @@
 module GoogleDataSource
   module DataSource
     class JsonData < Base
+
       def initialize(gdata_params)
         super(gdata_params)
         @responseHandler = "google.visualization.Query.setResponse"
@@ -18,7 +19,7 @@ module GoogleDataSource
           rsp[:table] = datatable unless data.nil?      
         else
           rsp[:status] = "error"
-          rsp[:errors] = @errors.values.map do |error|
+          rsp[:errors] = @errors.values.collect do |error|
             { :reason => "invalid_request" , :message => error }
           end
         end
@@ -28,18 +29,18 @@ module GoogleDataSource
       # Renders the part of the JSON response that contains the dataset.
       def datatable
         dt = {}
-        dt[:cols] = cols
+        dt[:cols] = columns.collect(&:to_h)
         dt[:rows] = []
         data.each do |datarow|
           row = []
           datarow.each_with_index do |datacell, colnum|
             if datacell.is_a?(Hash)
               row << {
-                :v => convert_cell(datacell[:v], cols[colnum][:type]),
+                :v => convert_cell(datacell[:v], columns[colnum].type),
                 :f => datacell[:f]
               }
             else
-              row << { :v => convert_cell(datacell, cols[colnum][:type])  }
+              row << { :v => convert_cell(datacell, columns[colnum].type)  }
             end
           end
         

@@ -142,7 +142,7 @@ class SqlReportingTest < ActiveSupport::TestCase
 
   test "include required columns in sql_select statement" do
     reporting = reporting_from_query("select firstname")
-    reporting.set_required_columns 'firstname', [:company_name]
+    reporting.add_required_columns :company_name
     select = reporting.sql_select.split(', ')
     assert_equal 2, select.size
     assert select.include?('firstname')
@@ -151,7 +151,7 @@ class SqlReportingTest < ActiveSupport::TestCase
 
   test "include joins for required columns" do
     reporting = reporting_from_query("select firstname")
-    reporting.set_required_columns 'firstname', [:company_name]
+    reporting.add_required_columns :company_name
     assert_equal "JOIN companies", reporting.sql_joins
   end
 
