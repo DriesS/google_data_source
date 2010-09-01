@@ -18,8 +18,10 @@ end
 
 class TestAggregator
   attr_reader :columns
+  attr_writer :valid
 
   def initialize(data, columns)
+    @valid = true
     @data = data
     @columns = columns
   end
@@ -30,6 +32,10 @@ class TestAggregator
 
   def callback
     "alert('foo');"
+  end
+
+  def valid?
+    @valid
   end
 end
 
@@ -258,6 +264,27 @@ class BaseTest < ActiveSupport::TestCase
     columns = response_columns(@datasource)
     puts columns.inspect
     assert_equal "Name", columns.first['label']
+  end
+
+  test "should turn invalid if aggregator is invalid" do
+    aggregator = test_aggregator
+    @datasource.set(aggregator)
+    @datasource.data
+    assert @datasource.valid?
+
+    aggregator.valid = false
+    @datasource.set(aggregator)
+    @datasource.data
+    assert ! @datasource.valid?
+  end
+
+  test "should render error if invalid" do
+    aggregator = test_aggregator
+    aggregator.valid = false
+    @datasource.set(aggregator)
+    response = response_hash(@datasource)
+    puts response.inspect
+    assert_equal 'error', response['status']
   end
 
   def test_data

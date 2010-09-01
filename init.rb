@@ -24,6 +24,8 @@ require 'reporting/action_controller_extension'
 require 'data_source/helper'
 require 'reporting/helper'
 
+require 'data_source/test_helper'
+
 # register helper
 ActionView::Base.class_eval { include GoogleDataSource::DataSource::Helper }
 ActionView::Base.class_eval { include GoogleDataSource::Reporting::Helper }

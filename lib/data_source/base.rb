@@ -143,6 +143,7 @@ module GoogleDataSource
 
         # set unformatted data
         @raw_data = data
+        validate
 
         # register virtual columns
         if data.respond_to?(:add_virtual_column)
@@ -154,12 +155,6 @@ module GoogleDataSource
       #
       def data
         @data unless @data.nil?
-
-        # check validity
-        if @raw_data.respond_to?(:valid?) && ! @raw_data.valid?
-          add_error(:reqId, "Form validation failed")
-          return
-        end
 
         # get data from object (eg. Reporting)
         data = @raw_data.respond_to?(:data) ?
@@ -245,6 +240,12 @@ module GoogleDataSource
       # conform to the official specs.
       def validate
         @errors.clear
+
+        # check validity
+        if @raw_data.respond_to?(:valid?) && ! @raw_data.valid?
+          add_error(:reqId, "Form validation failed")
+        end
+
         if @params[:tqx]
           add_error(:reqId, "Missing required parameter reqId") unless @params[:reqId]
         
