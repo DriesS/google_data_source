@@ -36,6 +36,9 @@ ActionController::Base.class_eval do
   alias_method_chain :render, :reporting
 end
 
+# I18n
+I18n.load_path.unshift *Dir[File.join(File.dirname(__FILE__), 'lib', 'locale', '*.{rb,yml}')]
+
 # Register TemplateHandler
 # TODO set mime type to CSV / HTML according to the output format
 Mime::Type.register "application/json", :datasource

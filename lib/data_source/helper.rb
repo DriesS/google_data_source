@@ -26,8 +26,22 @@ module GoogleDataSource
         
         url ||= url_for(:format => 'datasource')
         html = javascript_tag("DataSource.Visualization.create('#{type.camelize}', '#{url}', '#{container_id}', #{js_options.to_json});")
+
+        # Add Export links
+        html << tag(:div, {:id => "#{container_id}_controls"}, true)
+        (options[:exportable_as] || []).each do |format|
+          html << google_datasource_export_link(format)
+        end
+        html << ActiveSupport::SafeBuffer.new("</div>") # ugly, any ideas?
+
         html << content_tag(:div, :id => container_id) { }
         html
+      end
+
+      # Returns a export link for the given format
+      def google_datasource_export_link(format)
+        label = t("google_data_source.export_links.#{format}")
+        link_to(label, '#', :class => "export_as_#{format}")
       end
 
       # Shows a Google data table

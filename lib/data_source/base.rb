@@ -7,7 +7,7 @@ module GoogleDataSource
       # Callback defines a JavaScript snippet that is appended to the regular
       # data-source reponse. This is currently used to refresh the form in
       # reportings (validation)
-      attr_accessor :callback, :reporting, :column_labels, :formatters, :virtual_columns
+      attr_accessor :callback, :reporting, :column_labels, :formatters, :virtual_columns, :export_filename
 
       # Define accessors for the data source data, columns and errors
       attr_reader :errors
@@ -68,6 +68,12 @@ module GoogleDataSource
       # Add a list of columns to the list of required columns (columns that have to be fetched)
       def set_required_columns(column, requires = [])
         @required_columns[column.to_sym] = requires
+      end
+
+      # Returns the filename for export without extension.
+      # Defaults to "export"
+      def export_filename
+        @export_filename || 'export'
       end
 
       # Creates a new data source object from the get parameters of the data-source
@@ -262,6 +268,7 @@ module GoogleDataSource
       
       # Empty method. This is a placeholder implemented by subclasses that return the correct format
       def format
+        self[:out]
       end
     end
   end

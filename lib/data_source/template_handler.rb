@@ -13,6 +13,12 @@ module GoogleDataSource
         if !datasource.reporting.nil? && datasource.reporting.has_form?
           datasource.callback = "$('\\\#\#{datasource.reporting.form_id}').html(\#{render(:partial => datasource.reporting.partial).to_json});"
         end
+
+        if datasource.format == 'csv'
+          headers['Content-Type']        = 'text/csv; charset=utf-8'
+          headers['Content-Disposition'] = "attachment; filename=\\"\#{datasource.export_filename}.csv\\""
+        end
+
         datasource.response
         EOT
       end

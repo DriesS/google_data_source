@@ -81,6 +81,15 @@ class BaseTest < ActiveSupport::TestCase
     assert datasource.is_a?(InvalidData)
   end
 
+  test "should return the right format" do
+    datasource = Base.from_gdata_params({ :out => 'csv' })
+    assert_equal 'csv', datasource.format
+    datasource = Base.from_gdata_params({ :out => 'json' })
+    assert_equal 'json', datasource.format
+    datasource = Base.from_gdata_params({ :out => 'html' })
+    assert_equal 'html', datasource.format
+  end
+
   test "should be invalid if an error is added" do
     assert @datasource.valid?
     @datasource.add_error(:foo, 'bar')
