@@ -9,12 +9,14 @@ class SqlReportingTest < ActiveSupport::TestCase
     table :buildings, :depends => :companies, :join => 'JOIN buildings'
     table :companies,                         :join => 'JOIN companies'
 
-    column :firstname,    :type => :string, :sql => true
-    column :lastname,     :type => :string, :sql => { :column => :name }
-    column :company_name, :type => :string, :sql => { :table => :companies, :column => :name }
-    column :fullname,     :type => :string
-    column :building_no,  :type => :number, :sql => { :table => :buildings, :column => :number }
+    column :firstname,      :type => :string, :sql => true
+    column :lastname,       :type => :string, :sql => { :column => :name }
+    column :company_name,   :type => :string, :sql => { :table => :companies, :column => :name }
+    column :fullname,       :type => :string
+    column :building_no,    :type => :number, :sql => { :table => :buildings, :column => :number }
     column :literal_column, :type => :string, :sql => { :table => :companies, :column => 'literal' }
+
+    column :info,           :type => :string, :requires => :firstname
 
     def initialize(*args)
       @aggregate_calls = 0
@@ -147,6 +149,13 @@ class SqlReportingTest < ActiveSupport::TestCase
     assert_equal 2, select.size
     assert select.include?('firstname')
     assert select.include?('companies.name company_name')
+  end
+
+  test "account for columns that require other columns" do
+    reporting = reporting_from_query("select info")
+    select = reporting.sql_select.split(', ')
+    assert_equal 1, select.size
+    assert_equal 'firstname', select.first
   end
 
   test "include joins for required columns" do

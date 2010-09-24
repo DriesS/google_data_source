@@ -11,9 +11,13 @@ class ReportingTest < ActiveSupport::TestCase
     select_default   %w(name age)
     group_by_default %w(name)
 
-    column :name,      :type => :string
-    column :age,       :type => :number
-    column :address,   :type => :string
+    column :name,         :type => :string
+    column :age,          :type => :number
+    column :address,      :type => :string
+    column :fullname,     :type => :string, :requires => :name
+    column :fullfullname, :type => :string, :requires => :fullname
+    column :circle_a,     :requires => :circle_b
+    column :circle_b,     :requires => :circle_a
 
     def initialize(*args)
       #@select = %w(name age)
@@ -72,7 +76,8 @@ class ReportingTest < ActiveSupport::TestCase
     query = "select *"
     r = TestReporting.from_params({:tq => query})
     r.add_virtual_column(:virtual)
-    assert_equal %w(name age address virtual), r.select
+
+    assert_equal %w(name age address fullname fullfullname circle_a circle_b virtual), r.select
   end
 
   test "from_parmas should set group_by" do
@@ -83,7 +88,7 @@ class ReportingTest < ActiveSupport::TestCase
 
   test "from_params should also take regular get parameters (not the query) into account" do
     params = HashWithIndifferentAccess.new({:tq => '', :test_reporting => {:name => 'John'}})
-    r = TestReporting.from_params(params)
+    r = TestReporting.from_params(params, 'test_reporting')
     assert_equal "John", r.name
   end
 
@@ -157,6 +162,79 @@ class ReportingTest < ActiveSupport::TestCase
     assert_equal %w(age), @reporting.required_columns
     @reporting.data(:required_columns => %w(name))
     assert_equal %w(age name), @reporting.required_columns
+  end
+
+  test "serialization and deserialization" do
+    @reporting.select   = %w(age)
+    @reporting.group_by = %w(age)
+    @reporting.order_by = %w(name)
+    @reporting.limit    = 10
+    @reporting.offset   = 20
+    @reporting.name     = "John"
+
+    serialized = @reporting.serialize
+    reporting = TestReporting.deserialize(serialized)
+
+    assert_equal @reporting.select, reporting.select
+    assert_equal @reporting.group_by, reporting.group_by
+    assert_equal @reporting.order_by, reporting.order_by
+    assert_equal @reporting.limit, reporting.limit
+    assert_equal @reporting.offset, reporting.offset
+    assert_equal @reporting.name, reporting.name
+  end
+
+  test "from_params should recognize a serialized object and deserialize it" do
+    @reporting.select   = %w(age)
+    @reporting.group_by = %w(age)
+    @reporting.name     = "John"
+    serialized = @reporting.serialize
+
+    reporting = TestReporting.from_params(@reporting.to_params)
+
+    assert_equal @reporting.select, reporting.select
+    assert_equal @reporting.group_by, reporting.group_by
+    assert_equal @reporting.name, reporting.name
+  end
+
+  test "initialize should handle date string with grace" do
+    reporting = TestReporting.new(:from_date => '2010-01-01')
+    assert_equal Date.parse('2010-01-01'), reporting.from_date
+  end
+
+  test "account for the 'requires' option in column definition" do
+    reporting = TestReporting.new
+    reporting.select   = %w(fullname)
+    reporting.group_by = []
+    result = reporting.required_columns
+    assert_equal 2, result.size
+    assert result.include?('name')
+    assert result.include?('fullname')
+  end
+
+  test "'requires' option in column definition should work recursivly" do
+    reporting = TestReporting.new
+    reporting.select   = %w(fullfullname)
+    reporting.group_by = []
+    result = reporting.required_columns
+    assert_equal 3, result.size
+    assert result.include?('name')
+    assert result.include?('fullname')
+    assert result.include?('fullfullname')
+  end
+
+  test "recognize circle dependencies in column and throw exception" do
+    reporting = TestReporting.new
+    reporting.select   = %w(circle_a)
+    reporting.group_by = []
+    assert_raise CircularDependencyException do
+      reporting.required_columns
+    end
+  end
+
+  test "required_columns should handle virtual columns with grace" do
+    reporting = TestReporting.new
+    reporting.select = %w(virtual_column name)
+    assert_equal %w(virtual_column name), reporting.required_columns
   end
 
   ################################

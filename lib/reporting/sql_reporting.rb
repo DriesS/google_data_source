@@ -17,7 +17,7 @@ class SqlReporting < Reporting
 
   # Returns the columns string for the select clause
   def sql_select(additional_columns = [], mapping = {})
-    (map_columns(required_columns.uniq, mapping, true) << additional_columns).flatten.join(', ')
+    (map_columns(required_columns, mapping, true) << additional_columns).flatten.join(', ')
   end
 
   # Returns the columns string for the group by clause
@@ -63,7 +63,7 @@ class SqlReporting < Reporting
 
     # get all tables needed
     tables = columns.inject([]) do |tables, c|
-      sql = datasource_columns[c][:sql]
+      sql = datasource_columns[c][:sql] if is_sql_column?(c)
       tables << sql[:table] if sql && sql.is_a?(Hash)
       tables
     end.compact.uniq

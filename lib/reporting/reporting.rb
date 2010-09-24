@@ -1,3 +1,5 @@
+class CircularDependencyException < Exception; end
+
 # Super class for reportings to be rendered with Google visualizations
 # Encapsulates the aggregation of the reporting data based on a configuration.
 #
@@ -8,23 +10,40 @@
 # The ActiveRecord extension is copied from the ActiveForm plugin (http://github.com/remvee/active_form)
 class Reporting < ActiveRecord::Base
   attr_accessor :query, :group_by, :select, :order_by, :limit, :offset
-  attr_reader :virtual_columns, :required_columns
+  attr_reader :virtual_columns #, :required_columns
   attr_writer :id
 
+  # Stadanrd constructor
   def initialize(*args)
     @required_columns = []
     @virtual_columns = {}
     super(*args)
   end
 
+  # Returns an ID which is used by frontend components to generate unique dom ids 
+  # Defaults to the underscoreized classname
   def id
-    @id || self.class.name.underscore.split('/').last
+    @id || self.class.name.underscore.split('/').last #gsub('/', '_')
   end
 
+  # helper method used by required_columns
+  # Returns all columns required by a certain column resolving the dependencies recursively
+  def required_columns_for(column, start = nil)
+    return [] unless self.datasource_columns.has_key?(column)
+    raise CircularDependencyException.new("Column #{start} has a circular dependency") if column.to_sym == start
+    columns = [self.datasource_columns[column][:requires]].flatten.compact
+    columns.collect { |c| [c, required_columns_for(c, start || column.to_sym)] }.flatten
+  end
+
+  # Returns the columns that have to be selected
   def required_columns
-    (select + group_by + @required_columns).uniq
+    (select + group_by + @required_columns).inject([]) do |columns, column|
+      columns << required_columns_for(column)
+      columns << column
+    end.flatten.map(&:to_s).uniq
   end
 
+  # Adds required columns
   def add_required_columns(*columns)
     @required_columns = (@required_columns + columns.flatten.collect(&:to_s)).uniq
   end
@@ -100,6 +119,27 @@ class Reporting < ActiveRecord::Base
     self.class.datasource_columns
   end
 
+  # Returns a serialized representation of the reporting
+  def serialize
+    to_param.to_json
+  end
+
+  def to_param # :nodoc:
+    attributes.merge({
+      :select   => select,
+      :group_by => group_by,
+      :order_by => order_by,
+      :limit => limit,
+      :offset => offset
+    })
+  end
+
+  # Returns the serialized Reporting in a Hash that can be used for links
+  # and which is deserialized by from_params
+  def to_params(key = self.class.name.underscore.gsub('/', '_'))
+    HashWithIndifferentAccess.new( key => to_param )
+  end
+
   class << self
     attr_reader :datasource_columns
 
@@ -126,10 +166,18 @@ class Reporting < ActiveRecord::Base
       defaults[:group_by] = group_by
     end
 
+    # Returns a reporting from a serialized representation
+    def deserialize(value)
+      self.new(JSON.parse(value))
+    end
+
     # Uses the +simple_parse+ method of the SqlParser to setup a reporting
     # from a query. The where clause is intepreted as reporting configuration (activerecord attributes)
-    def from_params(params, key = self.name.underscore.split('/').last)
-      return self.new unless params.has_key?(:tq)
+    def from_params(params, key = self.name.underscore.gsub('/', '_'))
+      return self.deserialize(params[key]) if params.has_key?(key) && params[key].is_a?(String)
+
+      reporting = self.new(params[key])
+      return reporting unless params.has_key?(:tq)
 
       query = GoogleDataSource::DataSource::SqlParser.simple_parse(params[:tq])
       attributes = Hash.new
@@ -157,7 +205,8 @@ class Reporting < ActiveRecord::Base
       attributes[:limit]    = query.limit
       attributes[:offset]   = query.offset
       attributes.merge!(params[key]) if params.has_key?(key)
-      reporting = self.new(attributes.symbolize_keys)
+      #reporting.update_attributes(attributes)
+      reporting.attributes = attributes
       reporting.query = params[:tq]
       reporting
     end

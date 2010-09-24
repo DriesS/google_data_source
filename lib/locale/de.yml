@@ -1,4 +1,5 @@
 de:
   google_data_source:
     export_links:
-      csv: Download CSV
+      export_as: 'Exportieren als:'
+      csv: CSV

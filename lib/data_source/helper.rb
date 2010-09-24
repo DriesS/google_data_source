@@ -25,16 +25,28 @@ module GoogleDataSource
         js_options = options.to_a.inject({}) { |memo, opt| memo[opt.first.to_s.camelize(:lower)] = opt.last; memo }
         
         url ||= url_for(:format => 'datasource')
-        html = javascript_tag("DataSource.Visualization.create('#{type.camelize}', '#{url}', '#{container_id}', #{js_options.to_json});")
+        html = content_tag(:div, :id => container_id) { }
+        html << javascript_tag("DataSource.Visualization.create('#{type.camelize}', '#{url}', '#{container_id}', #{js_options.to_json});")
+
+        html << reporting_controls(container_id, options)
+        html
+      end
+
+      def reporting_controls(container_id, options)
+        html = tag(:div, {:id => "#{container_id}_controls", :class => "data_source_controls"}, true)
 
         # Add Export links
-        html << tag(:div, {:id => "#{container_id}_controls"}, true)
-        (options[:exportable_as] || []).each do |format|
-          html << google_datasource_export_link(format)
+        unless options[:exportable_as].nil? || options[:exportable_as].empty?
+          html << tag(:div, {:id => "#{container_id}_export_as"}, true)
+          html << t('google_data_source.export_links.export_as')
+          html << ' '
+          options[:exportable_as].each do |format|
+            html << google_datasource_export_link(format)
+          end
+          html << ActiveSupport::SafeBuffer.new("</div>")
         end
-        html << ActiveSupport::SafeBuffer.new("</div>") # ugly, any ideas?
 
-        html << content_tag(:div, :id => container_id) { }
+        html << ActiveSupport::SafeBuffer.new("</div>") # ugly, any ideas?
         html
       end
 
