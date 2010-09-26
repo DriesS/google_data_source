@@ -136,7 +136,7 @@ class Reporting < ActiveRecord::Base
 
   # Returns the serialized Reporting in a Hash that can be used for links
   # and which is deserialized by from_params
-  def to_params(key = self.class.name.underscore.gsub('/', '_'))
+  def to_params(key = self.class.name.demodulize.underscore)
     HashWithIndifferentAccess.new( key => to_param )
   end
 
@@ -173,7 +173,7 @@ class Reporting < ActiveRecord::Base
 
     # Uses the +simple_parse+ method of the SqlParser to setup a reporting
     # from a query. The where clause is intepreted as reporting configuration (activerecord attributes)
-    def from_params(params, key = self.name.underscore.gsub('/', '_'))
+    def from_params(params, key = self.name.demodulize.underscore)
       return self.deserialize(params[key]) if params.has_key?(key) && params[key].is_a?(String)
 
       reporting = self.new(params[key])

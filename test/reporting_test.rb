@@ -195,6 +195,15 @@ class ReportingTest < ActiveSupport::TestCase
     assert_equal @reporting.group_by, reporting.group_by
     assert_equal @reporting.name, reporting.name
   end
+  
+  test 'from_parmas should accept a hash without a module name' do
+    reporting = TestReporting.from_params('test_reporting' => { 'select' => %w(age) })
+    assert_equal %w(age), reporting.select
+  end
+  
+  test 'to_params should export the hash without a module name by default' do
+    assert_equal %w(test_reporting), @reporting.to_params.keys
+  end
 
   test "initialize should handle date string with grace" do
     reporting = TestReporting.new(:from_date => '2010-01-01')
