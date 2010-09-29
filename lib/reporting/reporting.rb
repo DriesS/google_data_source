@@ -79,7 +79,7 @@ class Reporting < ActiveRecord::Base
   def column_label(column, default = nil)
     return '' if column.blank?
     defaults = ['reportings.{{model}}.{{column}}', 'models.attributes.{{model}}.{{column}}'].collect do |scope|
-      scope.gsub!('{{model}}', self.class.name.underscore.gsub('/', '.'))
+      scope.gsub!('{{model}}', self.class.name.demodulize.underscore)
       scope.gsub('{{column}}', column.to_s)
     end.collect(&:to_sym)
     defaults << column.to_s.humanize
