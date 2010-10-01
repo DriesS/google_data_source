@@ -93,6 +93,11 @@ class ReportingEntryTest < ActiveSupport::TestCase
     assert_nil sum.foo
     assert_equal 3, sum.int
   end
+  
+  test 'to_sum_entry should return a SumEntry object' do
+    entry = TestReportingEntry.new(:int => 2, :float => 2.5, :foo => 'bar')
+    assert entry.to_sum_entry.kind_of?(SumEntry)
+  end
 
   test "handle summable virtual attributes correclty" do
     entry1 = TestReportingEntry.new()

@@ -40,17 +40,7 @@ class ReportingEntry
   # Returns a ReportingEntry object with all non addable values set to nil
   # This is thought be used for sum(mary) rows
   def to_sum_entry
-    subject = self
-    klass = Class.new(self.class) do
-      define_method(:method_missing) do |method_id, *args|
-        (method_id.to_s =~ summable_fields_regexp) ? subject.send(method_id, *args) : nil
-      end
-
-      def is_sum_entry?
-        return true
-      end
-    end
-    klass.new
+    SumEntry.new(self)
   end
 
   # Returns a composite element which lazily sums up the summable values of the children
