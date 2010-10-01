@@ -3,7 +3,8 @@ require "#{File.expand_path(File.dirname(__FILE__))}/test_helper"
 class ReportingEntryTest < ActiveSupport::TestCase
   class TestReportingEntry < ReportingEntry
     SUMMABLE_INT_FIELDS_REGEXP    = /int|another_value/
-    SUMMABLE_FLOAT_FIELDS_REGEXP = /float/
+    SUMMABLE_FLOAT_FIELDS_REGEXP  = /float/
+    NOT_SUMMABLE_FIELDS           = %w(hide_me)
 
     def reduced
       int - 1
@@ -11,6 +12,14 @@ class ReportingEntryTest < ActiveSupport::TestCase
 
     def another_value
       return 1
+    end
+    
+    def hide_me
+      "I'm not shown in sum entry"
+    end
+    
+    def show_me
+      "I'm shown!"
     end
   end
 
@@ -94,9 +103,16 @@ class ReportingEntryTest < ActiveSupport::TestCase
     assert_equal 3, sum.int
   end
   
-  test 'to_sum_entry should return a SumEntry object' do
-    entry = TestReportingEntry.new(:int => 2, :float => 2.5, :foo => 'bar')
-    assert entry.to_sum_entry.kind_of?(SumEntry)
+  test 'to_sum_entry should not return any explicitely hidden ruby columns' do
+    entry1 = TestReportingEntry.new(:int => 1, :float => 1.5, :foo => 'bar')
+    entry2 = TestReportingEntry.new(:int => 1, :float => 1.5, :foo => 'bar')
+    assert_equal nil, (entry1 + entry2).to_sum_entry.hide_me
+  end
+
+  test 'to_sum_entry should return all ruby columns in sum entry by default' do
+    entry1 = TestReportingEntry.new(:int => 1, :float => 1.5, :foo => 'bar')
+    entry2 = TestReportingEntry.new(:int => 1, :float => 1.5, :foo => 'bar')
+    assert_equal "I'm shown!", (entry1 + entry2).to_sum_entry.show_me
   end
 
   test "handle summable virtual attributes correclty" do

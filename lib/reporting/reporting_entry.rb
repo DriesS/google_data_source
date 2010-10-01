@@ -12,6 +12,9 @@ class ReportingEntry
   # DON'T USE THIS FOR IDs (e.g. ad_id)
   SUMMABLE_INT_FIELDS_REGEXP   = /OVERWRITE_THIS_IN_SUBCLASS/
   SUMMABLE_FLOAT_FIELDS_REGEXP = /OVERWRITE_THIS_IN_SUBCLASS/
+  
+  # Columns listed in this array are explicitely not summable
+  NOT_SUMMABLE_FIELDS          = %w()
 
   # Standard constructor
   # takes attributes as hash (like OpenStruct)
@@ -40,7 +43,27 @@ class ReportingEntry
   # Returns a ReportingEntry object with all non addable values set to nil
   # This is thought be used for sum(mary) rows
   def to_sum_entry
-    SumEntry.new(self)
+    subject = self
+    klass = Class.new(self.class) do
+      # overwrite explicitely not summable columns
+      #
+      subject.send(:not_summable_fields).each do |method_id|
+        define_method(method_id) { nil }
+      end
+      
+      # method missing decides if the columns is displayed or not
+      #
+      define_method(:method_missing) do |method_id, *args|
+        (method_id.to_s =~ summable_fields_regexp) ? subject.send(method_id, *args) : nil
+      end
+
+      # yes, this actually is a sum entry ;-)
+      #
+      def is_sum_entry?
+        return true
+      end
+    end
+    klass.new
   end
 
   # Returns a composite element which lazily sums up the summable values of the children
@@ -102,5 +125,11 @@ class ReportingEntry
     # convenience accessor for summable_fields_regexp
     def summable_fields_regexp
       self.class.summable_fields_regexp
+    end
+    
+    # Returns an array of explicitely not summable fields
+    #
+    def not_summable_fields
+      self.class::NOT_SUMMABLE_FIELDS
     end
 end
