@@ -188,7 +188,6 @@ class ReportingTest < ActiveSupport::TestCase
     @reporting.group_by = %w(age)
     @reporting.name     = "John"
     serialized = @reporting.serialize
-
     reporting = TestReporting.from_params(@reporting.to_params)
 
     assert_equal @reporting.select, reporting.select
@@ -197,12 +196,12 @@ class ReportingTest < ActiveSupport::TestCase
   end
   
   test 'from_parmas should accept a hash without a module name' do
-    reporting = TestReporting.from_params('test_reporting' => { 'select' => %w(age) })
+    reporting = TestReporting.from_params('reporting_test_test_reporting' => { 'select' => %w(age) })
     assert_equal %w(age), reporting.select
   end
   
-  test 'to_params should export the hash without a module name by default' do
-    assert_equal %w(test_reporting), @reporting.to_params.keys
+  test 'to_params should export the hash with a module name by default' do
+    assert_equal %w(reporting_test_test_reporting), @reporting.to_params.keys
   end
 
   test "initialize should handle date string with grace" do

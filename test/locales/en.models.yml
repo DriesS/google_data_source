@@ -1,6 +1,7 @@
 en:
   models:
     attributes:
-      test_reporting:
-        address: AddressModels
-        age: AgeModels
+      reporting_test:
+        test_reporting:
+          address: AddressModels
+          age: AgeModels
