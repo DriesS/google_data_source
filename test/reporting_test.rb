@@ -42,6 +42,10 @@ class ReportingTest < ActiveSupport::TestCase
   def setup
     @reporting = TestReporting.new
   end
+  
+  test "should have an own adapter stub" do
+    assert_kind_of ActiveRecord::ConnectionAdapters::ReportingAdapter, @reporting.connection
+  end
 
   test "rows should call aggregate once and only once" do
     @reporting.data

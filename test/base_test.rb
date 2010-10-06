@@ -193,7 +193,7 @@ class BaseTest < ActiveSupport::TestCase
     assert_equal 1, @datasource.required_columns.size
 
     # should also require age column
-    @datasource.formatter :name, :age do |row|
+    @datasource.formatter :name, :requires => [:age] do |row|
       "foo"
     end
     assert_equal 2, @datasource.required_columns.size

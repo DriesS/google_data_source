@@ -19,6 +19,12 @@ class Reporting < ActiveRecord::Base
     @virtual_columns = {}
     super(*args)
   end
+  
+  # Returns an instance of our own connection adapter
+  # 
+  def self.connection
+    @adapter ||= ActiveRecord::ConnectionAdapters::ReportingAdapter.new
+  end
 
   # Returns an ID which is used by frontend components to generate unique dom ids 
   # Defaults to the underscoreized classname

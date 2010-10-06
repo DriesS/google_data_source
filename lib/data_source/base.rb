@@ -38,8 +38,8 @@ module GoogleDataSource
       end
 
       # Convenience method for formatter definition
-      def formatter(column, *requires, &block)
-        set_required_columns(column, requires) #if options.has_key?(:requires)
+      def formatter(column, options = {}, &block)
+        set_required_columns(column, options[:requires]) if options.has_key?(:requires)
         formatters[column] = block
       end
 

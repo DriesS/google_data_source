@@ -17,7 +17,8 @@ class SqlReportingTest < ActiveSupport::TestCase
     column :literal_column, :type => :string, :sql => { :table => :companies, :column => 'literal' }
 
     column :info,           :type => :string, :requires => :firstname
-
+    column :boolean_thing,  :type => :boolean, :sql => { :table => :companies, :column => :my_boolean }
+    
     def initialize(*args)
       @aggregate_calls = 0
       super(*args)
@@ -32,7 +33,30 @@ class SqlReportingTest < ActiveSupport::TestCase
   def setup
     @reporting = TestReporting.new
   end
+  
+  test 'should return a condition for a boolean field' do
+    assert_equal "(companies.my_boolean = '1')", @reporting.sql_condition_for(:boolean_thing, true)
+    assert_equal "(companies.my_boolean = '0' OR ISNULL(companies.my_boolean))", @reporting.sql_condition_for(:boolean_thing, false)
+  end
 
+  test 'should return a condition for an integer field' do
+    assert_equal "(buildings.number = 1)", @reporting.sql_condition_for(:building_no, 1)
+    assert_equal '(buildings.number = \'1\')', @reporting.sql_condition_for(:building_no, '1')
+  end
+
+  test 'should return a condition for a string field' do
+    assert_equal '(name = \'foobar\')', @reporting.sql_condition_for(:lastname, 'foobar')
+  end
+
+  test 'should safely handle quotes in escaped value' do
+    assert_equal '(name = \'"test"\')', @reporting.sql_condition_for(:lastname, '"test"')
+    assert_equal "(name = '\\'test\\'')", @reporting.sql_condition_for(:lastname, "'test'")
+  end
+  
+  test "should return an array with values as IN match" do
+    assert_equal "(name IN('test','test2'))", @reporting.sql_condition_for(:lastname, %w(test test2))    
+  end
+  
   test "is_sql_column?" do
     assert @reporting.is_sql_column?(:firstname)
     assert @reporting.is_sql_column?('lastname')

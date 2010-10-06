@@ -70,9 +70,9 @@ class SqlReporting < Reporting
 
     # explode dependencies
     sql_joins = tables.collect do |table|
-      result = [@@sql_tables[table]]
+      result = [self.class.sql_tables[table]]
       while result.last.has_key?(:depends)
-        result << @@sql_tables[result.last[:depends]]
+        result << self.class.sql_tables[result.last[:depends]]
       end
       result.reverse
     end.flatten.uniq
@@ -108,8 +108,28 @@ class SqlReporting < Reporting
     sql_name << " #{column}" if options[:with_alias]
     sql_name
   end
+  
+  # Returns the SQL condition for the given column, depending on the columns type
+  #
+  def sql_condition_for(column_name, value)
+    sql_name = sql_column_name(column_name)
+    bind_vars = [ ]
+    condition = ''
+    
+    case all_columns[column_name][:type]
+      when :boolean then
+        bind_vars = value
+        condition = "(#{sql_name} = ?" + (value == false ? " OR ISNULL(#{sql_name}))" : ')')
+      else
+        bind_vars = value
+        condition = value.kind_of?(Array) ? "(#{sql_name} IN(?))" : "(#{sql_name} = ?)"
+    end
+    self.class.send(:sanitize_sql_array, [ condition, bind_vars ])
+  end
 
   class << self
+
+    attr_reader :sql_tables
     # Defines a SQL table that is not the 'main table'
     #
     # === Options
@@ -117,8 +137,8 @@ class SqlReporting < Reporting
     # * +depends+ Defines a table, this table depends on to join correclty (optional)
     #
     def table(name, options = {})
-      @@sql_tables ||= HashWithIndifferentAccess.new
-      @@sql_tables[name] = options
+      @sql_tables ||= HashWithIndifferentAccess.new
+      @sql_tables[name] = options
     end
   end
 end
