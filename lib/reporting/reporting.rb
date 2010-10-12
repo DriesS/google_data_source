@@ -12,7 +12,7 @@ class Reporting < ActiveRecord::Base
   attr_accessor :query, :group_by, :select, :order_by, :limit, :offset
   attr_reader :virtual_columns #, :required_columns
   attr_writer :id
-  class_inheritable_accessor :datasource_filters, :datasource_columns, :datasource_defaults
+  class_inheritable_accessor :datasource_filters, :datasource_columns, :datasource_defaults, :sql_filters
 
   # Stadanrd constructor
   def initialize(*args)
@@ -233,6 +233,12 @@ class Reporting < ActiveRecord::Base
       name = name.to_s
       options.each { |k,v| options[k] = v.to_s if Symbol === v }
       
+      # Adds the new value to the sql_filters hash
+      #
+      self.sql_filters ||= HashWithIndifferentAccess.new
+      self.sql_filters[name] = options
+      self.sql_filters[name][:type] ||= :string
+
       if human_name = options.delete(:human_name)
         name.instance_variable_set('@human_name', human_name)
         def name.humanize; @human_name; end
@@ -240,12 +246,12 @@ class Reporting < ActiveRecord::Base
       
       columns << ActiveRecord::ConnectionAdapters::Column.new(
         name,
-        options.delete(:default),
-        options.delete(:type) || :string,
-        options.include?(:null) ? options.delete(:null) : true
+        sql_filters[name][:default],
+        sql_filters[name][:type],
+        options.include?(:null) ? options[:null] : true
       )
       
-      raise ArgumentError.new("unknown option(s) #{options.inspect}") unless options.empty?
+      # raise ArgumentError.new("unknown option(s) #{options.inspect}") unless options.empty?
     end
 
     def abstract_class # :nodoc:

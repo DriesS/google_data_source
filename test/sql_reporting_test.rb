@@ -4,6 +4,10 @@ class SqlReportingTest < ActiveSupport::TestCase
   class TestReporting < SqlReporting
     attr_reader :aggregate_calls
     filter :name
+    filter :lastname
+    filter :got_no_sql_column
+    filter :building_no,        :type => :number
+    filter :boolean_thing,      :type => :boolean
 
     table :notneeded,                         :join => 'JOIN notneeded'
     table :buildings, :depends => :companies, :join => 'JOIN buildings'
@@ -61,6 +65,10 @@ class SqlReportingTest < ActiveSupport::TestCase
   
   test "should return an array with values as IN match" do
     assert_equal "(name IN('test','test2'))", @reporting.sql_condition_for(:lastname, %w(test test2))    
+  end
+  
+  test 'should return a condition even if there is no sql column defined for this filter' do
+    assert_equal '(got_no_sql_column = \'foobar\')', @reporting.sql_condition_for(:got_no_sql_column, 'foobar')
   end
   
   test "is_sql_column?" do

@@ -58,6 +58,10 @@ class ReportingTest < ActiveSupport::TestCase
     @reporting.data
     assert_equal 1, @reporting.aggregate_calls
   end
+  
+  test "should have a seperate hash for filters" do
+    assert_equal({ "type"=>:string }, @reporting.class.sql_filters["name"])
+  end
 
   test "from_params" do
     query = "where name = 'test name' and from_date = '2010-01-01'"
@@ -325,16 +329,6 @@ class ReportingTest < ActiveSupport::TestCase
     }
     
     assert_equal 'fiets', Humanizable.columns_hash['bicycle'].human_name
-  end
-  
-  test "fail on illegal options" do
-    assert_raises ArgumentError do
-      self.class.class_eval %q{
-        class FailOnIllegalOption < Reporting
-          filter :foo, :bar => 'yelp!'
-        end
-      }
-    end
   end
   
   CALLBACKS_CALLED_FOR_VALID = %w(before_validation after_validation before_validation_on_create after_validation_on_create before_save after_save before_create after_create)
