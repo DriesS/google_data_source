@@ -92,6 +92,10 @@ class ReportingEntry
     end
     klass.new
   end
+  
+  def billing_subject
+    @attributes[:billing_subject] || nil
+  end
 
   # Returns true if entry is a sum entry (like returned by to_sum_entry)
   def is_sum_entry?

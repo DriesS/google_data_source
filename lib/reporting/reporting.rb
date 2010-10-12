@@ -12,6 +12,7 @@ class Reporting < ActiveRecord::Base
   attr_accessor :query, :group_by, :select, :order_by, :limit, :offset
   attr_reader :virtual_columns #, :required_columns
   attr_writer :id
+  class_inheritable_accessor :datasource_filters, :datasource_columns, :datasource_defaults
 
   # Stadanrd constructor
   def initialize(*args)
@@ -147,19 +148,18 @@ class Reporting < ActiveRecord::Base
   end
 
   class << self
-    attr_reader :datasource_columns
 
     # Defines a displayable column of the datasource
     # Type defaults to string
     def column(name, options = {})
-      @datasource_columns ||= HashWithIndifferentAccess.new
+      self.datasource_columns ||= HashWithIndifferentAccess.new
       default_options = { :type  => :string }
       datasource_columns[name] = default_options.merge(options)
     end
 
     # Returns the defaults class variable
     def defaults
-      @defaults ||= Hash.new
+      self.datasource_defaults ||= Hash.new
     end
 
     # Sets the default value for select
@@ -221,7 +221,7 @@ class Reporting < ActiveRecord::Base
     # ActiveRecord overrides
     ############################
     def columns # :nodoc:
-      @columns ||= []
+      self.datasource_filters ||= []
     end
 
     # Define an attribute.  It takes the following options:

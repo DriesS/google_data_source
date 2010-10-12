@@ -3,8 +3,8 @@ module GoogleDataSource
     module Helper
       # Includes the JavaScript files neccessary for data source visualization
       # The helper should be called the header of the layout
-      def google_data_source_includes
-        html  = '<script type="text/javascript" src="http://www.google.com/jsapi"></script>'
+      def google_data_source_includes(ssl = false)
+        html = "<script src='http#{"s" if ssl}://www.google.com/jsapi' type='text/javascript'></script>"
         html << javascript_include_tag('google_datatable')
         html
       end

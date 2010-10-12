@@ -3,6 +3,7 @@
 #
 class SqlReporting < Reporting
   attr_reader :columns_used
+  class_inheritable_accessor :sql_tables
 
   # Container for columns used by any (select, group by, where) statement.
   # Used by the joins method to retrieve the joins needed
@@ -115,21 +116,25 @@ class SqlReporting < Reporting
     sql_name = sql_column_name(column_name)
     bind_vars = [ ]
     condition = ''
-    
+
     case all_columns[column_name][:type]
       when :boolean then
         bind_vars = value
         condition = "(#{sql_name} = ?" + (value == false ? " OR ISNULL(#{sql_name}))" : ')')
       else
         bind_vars = value
-        condition = value.kind_of?(Array) ? "(#{sql_name} IN(?))" : "(#{sql_name} = ?)"
+        # special handling for zero numbers = allow them to be null too
+        if all_columns[column_name][:type] == :number and not value.kind_of?(Array)
+          condition = "(#{sql_name} = ? #{(value.to_i.zero? ? "OR ISNULL(#{sql_name})" : "")})"
+        else
+          condition = value.kind_of?(Array) ? "(#{sql_name} IN(?))" : "(#{sql_name} = ?)"
+        end
     end
     self.class.send(:sanitize_sql_array, [ condition, bind_vars ])
   end
 
   class << self
 
-    attr_reader :sql_tables
     # Defines a SQL table that is not the 'main table'
     #
     # === Options
@@ -137,8 +142,8 @@ class SqlReporting < Reporting
     # * +depends+ Defines a table, this table depends on to join correclty (optional)
     #
     def table(name, options = {})
-      @sql_tables ||= HashWithIndifferentAccess.new
-      @sql_tables[name] = options
+      self.sql_tables ||= HashWithIndifferentAccess.new
+      sql_tables[name] = options
     end
   end
 end

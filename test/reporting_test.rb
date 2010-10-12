@@ -31,12 +31,18 @@ class ReportingTest < ActiveSupport::TestCase
     end
   end
 
-  class TestReportingB < Reporting
+  class TestReportingB < TestReporting
+    filter :name_b
+
     column :name_b, :type => :string
     column :age_b,  :type => :number
 
     select_default %w(name_b)
     group_by_default %w(age_b)
+  end
+
+  class TestReportingC < TestReporting
+    column :name_c, :type => :string
   end
 
   def setup
@@ -130,6 +136,26 @@ class ReportingTest < ActiveSupport::TestCase
     b = TestReportingB.new
     assert a.group_by != b.group_by
     assert a.select != b.select
+  end
+
+  test "sublasses should inherit all columns" do
+    reporting = TestReportingB.new
+    assert_nothing_raised do
+      assert reporting.datasource_columns.include?(:name)
+      assert reporting.datasource_columns.include?(:name_b)
+    end
+  end
+
+  test "subclasses should inherit all filters" do
+    reporting = TestReportingB.new
+    assert_equal 5, reporting.datasource_filters.count
+  end
+
+  test "subclasses should inherit all defaults" do
+    reporting = TestReportingC.new
+    assert_nothing_raised do
+      assert_equal ["name", "age"], reporting.defaults[:select]
+    end
   end
 
   test "should set limit and offset in from_params" do

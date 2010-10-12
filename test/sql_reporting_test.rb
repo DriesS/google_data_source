@@ -30,6 +30,11 @@ class SqlReportingTest < ActiveSupport::TestCase
     end
   end
 
+  class TestReportingB < TestReporting
+    filter :name_b
+
+  end
+
   def setup
     @reporting = TestReporting.new
   end
@@ -40,8 +45,9 @@ class SqlReportingTest < ActiveSupport::TestCase
   end
 
   test 'should return a condition for an integer field' do
-    assert_equal "(buildings.number = 1)", @reporting.sql_condition_for(:building_no, 1)
-    assert_equal '(buildings.number = \'1\')', @reporting.sql_condition_for(:building_no, '1')
+    assert_equal "(buildings.number = 1 )", @reporting.sql_condition_for(:building_no, 1)
+    assert_equal '(buildings.number = \'1\' )', @reporting.sql_condition_for(:building_no, '1')
+    assert_equal '(buildings.number = \'0\' OR ISNULL(buildings.number))', @reporting.sql_condition_for(:building_no, '0')
   end
 
   test 'should return a condition for a string field' do
@@ -195,6 +201,11 @@ class SqlReportingTest < ActiveSupport::TestCase
 
   test "should not append table name if column name is give as string" do
     assert_equal 'literal', @reporting.sql_column_name(:literal_column)
+  end
+
+  test "subclasses should inherit sql_tables" do
+    reporting = TestReportingB.new
+    assert_equal 3, reporting.sql_tables.count
   end
 
   def reporting_from_query(query)
