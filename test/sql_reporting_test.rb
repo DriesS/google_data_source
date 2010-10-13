@@ -3,12 +3,12 @@ require "#{File.expand_path(File.dirname(__FILE__))}/test_helper"
 class SqlReportingTest < ActiveSupport::TestCase
   class TestReporting < SqlReporting
     attr_reader :aggregate_calls
-    filter :name
+    filter :name,               :sql => true
     filter :lastname
     filter :got_no_sql_column
     filter :building_no,        :type => :number
     filter :test_integer,       :type => :integer
-    filter :boolean_thing,      :type => :boolean
+    filter :boolean_thing,      :type => :boolean, :sql => true
 
     table :notneeded,                         :join => 'JOIN notneeded'
     table :buildings, :depends => :companies, :join => 'JOIN buildings'
@@ -42,6 +42,15 @@ class SqlReportingTest < ActiveSupport::TestCase
 
   def setup
     @reporting = TestReporting.new
+  end
+  
+  test 'should return an array of bind variables for the query' do
+    assert_equal({ :name => 'foo' }, TestReporting.new(:name => 'foo', :lastname => 'bar').sql_bind_variables)
+  end
+  
+  test 'should return an array of sql conditions concatinated by AND' do
+    conditions = TestReporting.new(:name => 'foo', :boolean_thing => true).sql_conditions
+    assert_equal "(name = 'foo') AND (companies.my_boolean = '1')", conditions
   end
   
   test 'should return a condition for a boolean field' do

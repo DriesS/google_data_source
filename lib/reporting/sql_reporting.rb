@@ -133,6 +133,28 @@ class SqlReporting < Reporting
     end
     self.class.send(:sanitize_sql_array, [ condition, bind_vars ])
   end
+  
+  # Returns all key value pairs that will be bound to the query
+  #
+  def sql_bind_variables
+    bind_vars = {}
+    self.class.sql_filters.each do |column_name, options|
+      # just filter sql columns and nil values
+      if options[:sql] and not attributes[column_name].nil?
+        bind_vars[column_name] = attributes[column_name]
+      end
+    end
+    
+    bind_vars.symbolize_keys
+  end
+  
+  # Concat all where conditions for all bind variables
+  #
+  def sql_conditions
+    sql_bind_variables.collect do |column_name, value|
+      sql_condition_for(column_name, value)
+    end.compact.join(' AND ')
+  end
 
   class << self
 
