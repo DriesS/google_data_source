@@ -156,6 +156,13 @@ class SqlReporting < Reporting
     end.compact.join(' AND ')
   end
 
+  # Marks all columns used in filters or in the select fields as used
+  # 
+  #
+  def mark_used_columns
+    sql_bind_variables.each { |col, value| mark_as_used(col) unless value.nil? }
+  end
+
   class << self
 
     # Defines a SQL table that is not the 'main table'

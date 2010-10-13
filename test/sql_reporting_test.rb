@@ -37,11 +37,17 @@ class SqlReportingTest < ActiveSupport::TestCase
 
   class TestReportingB < TestReporting
     filter :name_b
-
   end
 
   def setup
     @reporting = TestReporting.new
+  end
+  
+  test 'should mark bind variables as used columns' do
+    reporting = TestReporting.new(:name => 'foo', :lastname => 'bar')
+    assert_equal([], reporting.columns_used)
+    reporting.mark_used_columns
+    assert_equal([ :name ], reporting.columns_used)
   end
   
   test 'should return an array of bind variables for the query' do
