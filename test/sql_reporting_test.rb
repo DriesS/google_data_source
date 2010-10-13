@@ -7,6 +7,7 @@ class SqlReportingTest < ActiveSupport::TestCase
     filter :lastname
     filter :got_no_sql_column
     filter :building_no,        :type => :number
+    filter :test_integer,       :type => :integer
     filter :boolean_thing,      :type => :boolean
 
     table :notneeded,                         :join => 'JOIN notneeded'
@@ -48,12 +49,16 @@ class SqlReportingTest < ActiveSupport::TestCase
     assert_equal "(companies.my_boolean = '0' OR ISNULL(companies.my_boolean))", @reporting.sql_condition_for(:boolean_thing, false)
   end
 
-  test 'should return a condition for an integer field' do
+  test 'should return a condition for a number field' do
     assert_equal "(buildings.number = 1 )", @reporting.sql_condition_for(:building_no, 1)
     assert_equal '(buildings.number = \'1\' )', @reporting.sql_condition_for(:building_no, '1')
     assert_equal '(buildings.number = \'0\' OR ISNULL(buildings.number))', @reporting.sql_condition_for(:building_no, '0')
+    assert_equal '(buildings.number = 0 OR ISNULL(buildings.number))', @reporting.sql_condition_for(:building_no, 0)
   end
 
+  test 'should return a condition for an integer field' do
+    assert_equal '(test_integer = 0 OR ISNULL(test_integer))', @reporting.sql_condition_for(:test_integer, 0)
+  end
   test 'should return a condition for a string field' do
     assert_equal '(name = \'foobar\')', @reporting.sql_condition_for(:lastname, 'foobar')
   end

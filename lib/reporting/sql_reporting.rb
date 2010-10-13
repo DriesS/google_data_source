@@ -117,8 +117,7 @@ class SqlReporting < Reporting
     sql_name = is_sql_column?(column_name) ? sql_column_name(column_name) : column_name
     bind_vars = [ ]
     condition = ''
-
-    type = self.class.sql_filters[column_name][:type].to_sym
+    type = self.class.sql_filters.symbolize_keys[column_name][:type].to_sym
     case type
       when :boolean then
         bind_vars = value
@@ -126,7 +125,7 @@ class SqlReporting < Reporting
       else
         bind_vars = value
         # special handling for zero numbers = allow them to be null too
-        if type == :number and not value.kind_of?(Array)
+        if [ :number, :integer ].include?(type) and not value.kind_of?(Array)
           condition = "(#{sql_name} = ? #{(value.to_i.zero? ? "OR ISNULL(#{sql_name})" : "")})"
         else
           condition = value.kind_of?(Array) ? "(#{sql_name} IN(?))" : "(#{sql_name} = ?)"

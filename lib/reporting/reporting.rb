@@ -123,7 +123,7 @@ class Reporting < ActiveRecord::Base
 
   # Attribute reader for datasource_columns
   def datasource_columns
-    self.class.datasource_columns
+    self.class.datasource_columns || { }
   end
 
   # Returns a serialized representation of the reporting
@@ -235,7 +235,7 @@ class Reporting < ActiveRecord::Base
       
       # Adds the new value to the sql_filters hash
       #
-      self.sql_filters ||= HashWithIndifferentAccess.new
+      self.sql_filters ||= {}
       self.sql_filters[name] = options
       self.sql_filters[name][:type] ||= :string
 

@@ -1,6 +1,10 @@
 require "#{File.expand_path(File.dirname(__FILE__))}/test_helper"
 
 class ReportingTest < ActiveSupport::TestCase
+  
+  class EmptyReporting < Reporting
+  end
+  
   class TestReporting < Reporting
     attr_reader :aggregate_calls
     filter :name
@@ -49,6 +53,10 @@ class ReportingTest < ActiveSupport::TestCase
     @reporting = TestReporting.new
   end
   
+  test 'should return a default hash if datasource columns are not set' do
+    assert_equal({}, EmptyReporting.new.datasource_columns)
+  end
+  
   test "should have an own adapter stub" do
     assert_kind_of ActiveRecord::ConnectionAdapters::ReportingAdapter, @reporting.connection
   end
@@ -60,7 +68,7 @@ class ReportingTest < ActiveSupport::TestCase
   end
   
   test "should have a seperate hash for filters" do
-    assert_equal({ "type"=>:string }, @reporting.class.sql_filters["name"])
+    assert_equal({ :type => :string }, @reporting.class.sql_filters["name"])
   end
 
   test "from_params" do
