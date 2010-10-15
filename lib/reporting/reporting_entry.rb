@@ -89,12 +89,14 @@ class ReportingEntry
           self.method_missing(method_id, *args)
         end
       end
+      
+      # For better debuggability
+      #
+      define_method :inspect do
+        "CompositeReportingEntry [entries: #{entries.inspect} ]"
+      end
     end
     klass.new
-  end
-  
-  def billing_subject
-    @attributes[:billing_subject] || nil
   end
 
   # Returns true if entry is a sum entry (like returned by to_sum_entry)
@@ -135,5 +137,11 @@ class ReportingEntry
     #
     def not_summable_fields
       self.class::NOT_SUMMABLE_FIELDS
+    end
+    
+    # For debugging purpose
+    #
+    def inspect
+      "#{self.class.name}: <#{@attributes.inspect}>"
     end
 end

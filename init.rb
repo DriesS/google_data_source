@@ -20,6 +20,7 @@ require 'reporting/reporting'
 require 'reporting/reporting_adapter'
 require 'reporting/sql_reporting'
 require 'reporting/reporting_entry'
+require 'reporting/grouped_set'
 require 'reporting/action_controller_extension'
 
 require 'data_source/helper'

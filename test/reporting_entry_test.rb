@@ -123,7 +123,26 @@ class ReportingEntryTest < ActiveSupport::TestCase
     assert_equal 1, entry1.another_value
     assert_equal 2, sum.another_value
   end
-
+  
+  test "be able to group by billing_subject" do
+    result = [
+              {"campaign_name"=>"Campaign #5", "billing_subject"=>'foo', "campaign_id"=>"8188", "transaction_count"=>"2", "postview_transaction_count"=>"0", "click_transaction_count"=>"0", "sum"=>"45.3000001907349", "status"=>"confirmed", "pricing_association_id"=>"330"}, 
+              {"campaign_name"=>"Campaign #6", "billing_subject"=>'blah', "campaign_id"=>"8189", "transaction_count"=>"1", "postview_transaction_count"=>"0", "click_transaction_count"=>"0", "sum"=>"1.10000002384186", "status"=>"confirmed", "pricing_association_id"=>"330"}, 
+              {"campaign_name"=>"Campaign #6", "billing_subject"=>'blah', "campaign_id"=>"8189", "transaction_count"=>"1", "postview_transaction_count"=>"0", "click_transaction_count"=>"0", "sum"=>"1.10000002384186", "status"=>"open", "pricing_association_id"=>"330"}, 
+              {"campaign_name"=>"Campaign #6", "billing_subject"=>"test", "campaign_id"=>"8189", "transaction_count"=>"1", "postview_transaction_count"=>"0", "click_transaction_count"=>"0", "sum"=>"31337", "status"=>"open", "pricing_association_id"=>"330"}
+            ]
+    result.collect!{ |re| ReportingEntry.new(re) }
+    result = result.group_by { |entry| "#{entry.send(:billing_subject)}" }.values
+    assert_equal 3, result.size
+    
+    result = result.collect do |entries|
+      # Uses the class of the first element to build the composite element
+      entries.first.class.composite(entries)
+    end
+    
+    assert_equal %w(foo blah test), result.collect(&:billing_subject)
+  end
+  
   test "virtual attributes " do
     assert true
   end
