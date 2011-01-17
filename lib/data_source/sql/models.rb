@@ -1,5 +1,3 @@
-require "rparsec/misc"
-
 module GoogleDataSource
   module DataSource
     module Sql

@@ -1,6 +1,7 @@
 $:.unshift File.join(File.dirname(__FILE__), 'lib')
  
 require 'ostruct'
+require 'rparsec'
 
 require 'data_source/base'
 require 'data_source/json_data'

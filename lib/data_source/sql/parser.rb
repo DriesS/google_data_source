@@ -1,7 +1,3 @@
-[:parsers, :keywords, :operators, :functors, :expressions].each do |lib|
-  require "rparsec/#{lib}"
-end
-
 module GoogleDataSource
   module DataSource
     module Sql

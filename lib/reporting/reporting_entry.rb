@@ -142,6 +142,6 @@ class ReportingEntry
     # For debugging purpose
     #
     def inspect
-      "#{self.class.name}: <#{@attributes.inspect}>"
+      "#{self.class.name}: <#{@attributes.inspect}>\n"
     end
 end
